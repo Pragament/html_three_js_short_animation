@@ -30,15 +30,10 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="questionCount">Total Questions (1-20)</label>
-                        <input type="number" id="questionCount" min="1" max="20" value="10">
-                    </div>
-
                     <div class="player-config">
-                        <h3>Player Answers</h3>
-                        <div id="playerAnswersContainer">
-                            <!-- Player answer inputs will be generated here -->
+                        <h3>Player Questions & Answers</h3>
+                        <div id="playerQuestionsContainer">
+                            <!-- Player question inputs will be generated here -->
                         </div>
                     </div>
 
@@ -49,8 +44,7 @@
             <div class="game-view" id="gameView">
                 <canvas id="gameCanvas"></canvas>
                 <div class="game-ui">
-                    <div class="question-counter">Question: <span id="currentQuestion">1</span>/<span
-                            id="totalQuestions">10</span></div>
+                    <div class="question-counter">Round: <span id="currentRound">1</span></div>
                     <div class="player-progress" id="playerProgress">
                         <!-- Player progress bars will be generated here -->
                     </div>
@@ -64,13 +58,11 @@
 
         <div class="url-info" id="urlInfo" style="display: none;">
             <h3>Sample URLs for Testing:</h3>
-            <p><a href="?players=2&questions=5&p1=C,W,C,W,C&p2=W,W,C,W,C">2 Players, 5 Questions</a></p>
-            <p><a href="?players=3&questions=5&p1=C,W,C,W,C&p2=W,W,C,W,C&p3=C,C,W,W,C">3 Players, 5 Questions (Example
-                    from prompt)</a></p>
-            <p><a
-                    href="?players=4&questions=8&p1=C,C,W,C,W,C,C,W&p2=W,C,C,W,C,W,C,C&p3=C,W,C,C,W,W,C,C&p4=W,W,C,C,C,W,C,W">4
-                    Players, 8 Questions</a></p>
-            <p><a href="?players=1&questions=3&p1=C,C,C">1 Player, 3 Questions (All Correct)</a></p>
+            <p><a href="?players=2&p1=5&C,W,C,W,C&p2=7&W,W,C,W,C,C,W">2 Players (5 and 7 questions)</a></p>
+            <p><a href="?players=3&p1=5&C,W,C,W,C&p2=5&W,W,C,W,C&p3=5&C,C,W,W,C">3 Players, 5 Questions each</a></p>
+            <p><a href="?players=4&p1=8&C,C,W,C,W,C,C,W&p2=6&W,C,C,W,C,W&p3=7&C,W,C,C,W,W,C&p4=5&W,W,C,C,C">4 Players
+                    (8,6,7,5 questions)</a></p>
+            <p><a href="?players=1&p1=3&C,C,C">1 Player, 3 Questions (All Correct)</a></p>
         </div>
     </div>
     <script src="script.js"></script>

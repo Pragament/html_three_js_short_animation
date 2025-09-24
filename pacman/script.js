@@ -1,47 +1,55 @@
 // Game configuration
 const gameConfig = {
     playerCount: 2,
-    questionCount: 10,
-    playerAnswers: [],
+    playerQuestions: [5, 5], // Number of questions for each player
+    playerAnswers: [[], []], // Answers for each player
     playerColors: [0xffcc00, 0x00ccff, 0xff00cc, 0x00ff66],
     playerNames: ['Player 1', 'Player 2', 'Player 3', 'Player 4']
 };
 
 // Three.js variables
 let scene, camera, renderer, maze, pacMen = [];
-let questionIndex = 0;
+let currentRound = 0;
 let gameStarted = false;
 let animationId = null;
 let clock = new THREE.Clock();
+let gameFinished = false;
 
 // Parse URL parameters
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     const players = parseInt(params.get('players'));
-    const questions = parseInt(params.get('questions'));
 
-    if (!players || !questions || players < 1 || players > 4 || questions < 1 || questions > 20) {
+    if (!players || players < 1 || players > 4) {
         return null;
     }
 
     const config = {
         playerCount: players,
-        questionCount: questions,
+        playerQuestions: [],
         playerAnswers: []
     };
 
-    // Get answers for each player
+    // Get questions and answers for each player
     for (let i = 1; i <= players; i++) {
-        const answers = params.get(`p${i}`);
-        if (!answers) return null;
+        const playerParam = params.get(`p${i}`);
+        if (!playerParam) return null;
 
-        // Convert C/W to Correct/Wrong
+        const parts = playerParam.split('&');
+        if (parts.length < 2) return null;
+
+        const questionCount = parseInt(parts[0]);
+        if (!questionCount || questionCount < 1 || questionCount > 20) return null;
+
+        config.playerQuestions.push(questionCount);
+
+        // Get answers
+        const answers = parts[1];
         const answerArray = answers.split(',').map(a =>
             a.trim().toUpperCase() === 'C' ? 'Correct' : 'Wrong'
         );
 
-        if (answerArray.length !== questions) return null;
-
+        if (answerArray.length !== questionCount) return null;
         config.playerAnswers.push(answerArray);
     }
 
@@ -56,7 +64,7 @@ function init() {
     if (urlConfig) {
         // Auto-start game with URL configuration
         gameConfig.playerCount = urlConfig.playerCount;
-        gameConfig.questionCount = urlConfig.questionCount;
+        gameConfig.playerQuestions = urlConfig.playerQuestions;
         gameConfig.playerAnswers = urlConfig.playerAnswers;
 
         // Hide config panel and URL info
@@ -70,53 +78,82 @@ function init() {
         document.getElementById('urlInfo').style.display = 'block';
 
         // Set up event listeners
-        document.getElementById('playerCount').addEventListener('change', updatePlayerAnswersUI);
-        document.getElementById('questionCount').addEventListener('change', updatePlayerAnswersUI);
+        document.getElementById('playerCount').addEventListener('change', updatePlayerQuestionsUI);
         document.getElementById('startBtn').addEventListener('click', startGameFromUI);
         document.getElementById('restartBtn').addEventListener('click', restartGame);
 
-        // Initialize player answers UI
-        updatePlayerAnswersUI();
+        // Initialize player questions UI
+        updatePlayerQuestionsUI();
     }
 }
 
-// Update the player answers UI based on configuration
-function updatePlayerAnswersUI() {
+// Update the player questions UI based on configuration
+function updatePlayerQuestionsUI() {
     const playerCount = parseInt(document.getElementById('playerCount').value);
-    const questionCount = parseInt(document.getElementById('questionCount').value);
-    const container = document.getElementById('playerAnswersContainer');
+    const container = document.getElementById('playerQuestionsContainer');
 
     container.innerHTML = '';
 
     for (let i = 0; i < playerCount; i++) {
         const playerDiv = document.createElement('div');
-        playerDiv.className = 'player-answer-set';
-        playerDiv.innerHTML = `<h4>${gameConfig.playerNames[i]} Answers</h4>`;
+        playerDiv.className = 'player-question-set';
+        playerDiv.innerHTML = `<h4>${gameConfig.playerNames[i]}</h4>`;
 
+        // Question count input
+        const questionCountDiv = document.createElement('div');
+        questionCountDiv.className = 'form-group';
+        questionCountDiv.innerHTML = `
+                    <label for="questionCount${i}">Number of Questions (1-20)</label>
+                    <input type="number" id="questionCount${i}" min="1" max="20" value="5">
+                `;
+        playerDiv.appendChild(questionCountDiv);
+
+        // Answers section
         const answersDiv = document.createElement('div');
         answersDiv.className = 'player-answers';
         answersDiv.id = `playerAnswers${i}`;
-
-        for (let j = 0; j < questionCount; j++) {
-            const answerBtn = document.createElement('button');
-            answerBtn.className = 'answer-btn';
-            answerBtn.textContent = `Q${j + 1}`;
-            answerBtn.dataset.player = i;
-            answerBtn.dataset.question = j;
-            answerBtn.addEventListener('click', toggleAnswer);
-
-            // Set default answers (alternating correct/wrong)
-            if (j % 2 === 0) {
-                answerBtn.classList.add('selected', 'correct');
-            } else {
-                answerBtn.classList.add('selected', 'wrong');
-            }
-
-            answersDiv.appendChild(answerBtn);
-        }
+        answersDiv.innerHTML = `<label>Answers:</label>`;
 
         playerDiv.appendChild(answersDiv);
         container.appendChild(playerDiv);
+
+        // Add event listener to update answers when question count changes
+        document.getElementById(`questionCount${i}`).addEventListener('change', function () {
+            updatePlayerAnswersUI(i);
+        });
+
+        // Initialize answers UI
+        updatePlayerAnswersUI(i);
+    }
+}
+
+// Update answers UI for a specific player
+function updatePlayerAnswersUI(playerIndex) {
+    const questionCount = parseInt(document.getElementById(`questionCount${playerIndex}`).value);
+    const answersDiv = document.getElementById(`playerAnswers${playerIndex}`);
+
+    // Remove existing answer buttons except the label
+    while (answersDiv.children.length > 1) {
+        answersDiv.removeChild(answersDiv.lastChild);
+    }
+
+    // Create answer buttons
+    for (let j = 0; j < questionCount; j++) {
+        const answerBtn = document.createElement('button');
+        answerBtn.className = 'answer-btn';
+        answerBtn.textContent = `Q${j + 1}`;
+        answerBtn.dataset.player = playerIndex;
+        answerBtn.dataset.question = j;
+        answerBtn.addEventListener('click', toggleAnswer);
+
+        // Set default answers (alternating correct/wrong)
+        if (j % 2 === 0) {
+            answerBtn.classList.add('selected', 'correct');
+        } else {
+            answerBtn.classList.add('selected', 'wrong');
+        }
+
+        answersDiv.appendChild(answerBtn);
     }
 }
 
@@ -183,9 +220,12 @@ function setupThreeJSScene() {
     window.addEventListener('resize', onWindowResize);
 }
 
-// Create the maze
+// Create the maze - now dynamic based on max questions
 function createMaze() {
     maze = new THREE.Group();
+
+    // Find maximum number of questions among players
+    const maxQuestions = Math.max(...gameConfig.playerQuestions);
 
     // Create floor
     const floorGeometry = new THREE.PlaneGeometry(40, 40);
@@ -199,13 +239,13 @@ function createMaze() {
     floor.receiveShadow = true;
     maze.add(floor);
 
-    // Create path markers
+    // Create path markers for maximum questions
     const pathGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
     const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2a5a });
 
-    for (let i = 0; i < gameConfig.questionCount; i++) {
+    for (let i = 0; i < maxQuestions; i++) {
         const pathMarker = new THREE.Mesh(pathGeometry, pathMaterial);
-        pathMarker.position.x = -15 + (i * 30 / (gameConfig.questionCount - 1));
+        pathMarker.position.x = -15 + (i * 30 / (maxQuestions - 1));
         pathMarker.position.y = 0.05;
         pathMarker.receiveShadow = true;
         maze.add(pathMarker);
@@ -233,6 +273,7 @@ function createMaze() {
 // Create Pac-Man characters
 function createPacMen() {
     pacMen = [];
+    const maxQuestions = Math.max(...gameConfig.playerQuestions);
 
     for (let i = 0; i < gameConfig.playerCount; i++) {
         // Create Pac-Man body (sphere with a segment removed for the mouth)
@@ -257,11 +298,13 @@ function createPacMen() {
         scene.add(pacMan);
         pacMen.push({
             mesh: pacMan,
-            position: 0,
+            currentQuestion: 0,
+            totalQuestions: gameConfig.playerQuestions[i],
             mouthOpen: true,
             mouthDirection: 1,
             correctAnswers: 0,
-            mouthAnimationTime: 0
+            mouthAnimationTime: 0,
+            finished: false
         });
 
         // Create player progress UI
@@ -273,6 +316,7 @@ function createPacMen() {
                     <div class="progress-bar">
                         <div class="progress-fill" id="progress${i}" style="width: 0%; background-color: #${gameConfig.playerColors[i].toString(16).padStart(6, '0')}"></div>
                     </div>
+                    <div class="player-status" id="status${i}">0/${gameConfig.playerQuestions[i]}</div>
                 `;
         document.getElementById('playerProgress').appendChild(progressItem);
     }
@@ -282,11 +326,13 @@ function createPacMen() {
 function startGameFromUI() {
     // Get configuration from UI
     gameConfig.playerCount = parseInt(document.getElementById('playerCount').value);
-    gameConfig.questionCount = parseInt(document.getElementById('questionCount').value);
-
-    // Get player answers from UI
+    gameConfig.playerQuestions = [];
     gameConfig.playerAnswers = [];
+
     for (let i = 0; i < gameConfig.playerCount; i++) {
+        const questionCount = parseInt(document.getElementById(`questionCount${i}`).value);
+        gameConfig.playerQuestions.push(questionCount);
+
         const playerAnswers = [];
         const answerButtons = document.querySelectorAll(`#playerAnswers${i} .answer-btn`);
 
@@ -295,14 +341,6 @@ function startGameFromUI() {
         }
 
         gameConfig.playerAnswers.push(playerAnswers);
-    }
-
-    // Validate that all questions have answers
-    for (let i = 0; i < gameConfig.playerCount; i++) {
-        if (gameConfig.playerAnswers[i].length !== gameConfig.questionCount) {
-            alert(`Please set answers for all questions for ${gameConfig.playerNames[i]}`);
-            return;
-        }
     }
 
     startGameCommon();
@@ -321,9 +359,6 @@ function startGameCommon() {
     document.getElementById('gameView').style.display = 'block';
     document.getElementById('urlInfo').style.display = 'none';
 
-    // Update UI
-    document.getElementById('totalQuestions').textContent = gameConfig.questionCount;
-
     // Set up Three.js scene
     setupThreeJSScene();
 
@@ -333,7 +368,8 @@ function startGameCommon() {
 
     // Start the game animation
     gameStarted = true;
-    questionIndex = 0;
+    gameFinished = false;
+    currentRound = 0;
     clock.start();
     animate();
 }
@@ -342,7 +378,8 @@ function startGameCommon() {
 function restartGame() {
     // Reset game state
     gameStarted = false;
-    questionIndex = 0;
+    gameFinished = false;
+    currentRound = 0;
 
     // Hide winner celebration
     document.getElementById('winnerCelebration').style.display = 'none';
@@ -363,7 +400,7 @@ function restartGame() {
     if (urlConfig) {
         // Restart with URL parameters
         gameConfig.playerCount = urlConfig.playerCount;
-        gameConfig.questionCount = urlConfig.questionCount;
+        gameConfig.playerQuestions = urlConfig.playerQuestions;
         gameConfig.playerAnswers = urlConfig.playerAnswers;
 
         // Start game directly
@@ -390,10 +427,16 @@ function animate() {
     const delta = clock.getDelta();
 
     // Update Pac-Man animations
+    let allFinished = true;
+
     pacMen.forEach((pacMan, index) => {
+        if (pacMan.finished) return;
+
+        allFinished = false;
+
         // Animate mouth
         pacMan.mouthAnimationTime += delta;
-        const mouthSpeed = 5; // Mouth animation speed
+        const mouthSpeed = 5;
 
         if (pacMan.mouthAnimationTime > 1 / mouthSpeed) {
             pacMan.mouthOpen = !pacMan.mouthOpen;
@@ -409,13 +452,14 @@ function animate() {
             }
         }
 
-        // Move Pac-Man based on answers
-        if (questionIndex < gameConfig.questionCount) {
-            const answer = gameConfig.playerAnswers[index][questionIndex];
+        // Process current question if player has more questions
+        if (pacMan.currentQuestion < pacMan.totalQuestions) {
+            const answer = gameConfig.playerAnswers[index][pacMan.currentQuestion];
 
             if (answer === 'Correct') {
                 // Move forward
-                const targetX = -15 + (pacMan.correctAnswers * 30 / (gameConfig.questionCount - 1));
+                const maxQuestions = Math.max(...gameConfig.playerQuestions);
+                const targetX = -15 + (pacMan.correctAnswers * 30 / (maxQuestions - 1));
                 pacMan.mesh.position.x += (targetX - pacMan.mesh.position.x) * 0.1;
 
                 // Add green glow effect
@@ -429,6 +473,9 @@ function animate() {
                 pacMan.mesh.material.emissive.setHex(0xff0000);
                 pacMan.mesh.material.emissiveIntensity = 0.5;
             }
+        } else {
+            // Player has finished all questions
+            pacMan.finished = true;
         }
 
         // Gradually reduce emissive intensity
@@ -437,43 +484,59 @@ function animate() {
 
     // Update camera to follow the Pac-Men
     if (pacMen.length > 0) {
-        const averageX = pacMen.reduce((sum, pacMan) => sum + pacMan.mesh.position.x, 0) / pacMen.length;
-        camera.position.x += (averageX - camera.position.x) * 0.05;
-        camera.lookAt(averageX, 0, 0);
+        const activePacMen = pacMen.filter(p => !p.finished);
+        if (activePacMen.length > 0) {
+            const averageX = activePacMen.reduce((sum, pacMan) => sum + pacMan.mesh.position.x, 0) / activePacMen.length;
+            camera.position.x += (averageX - camera.position.x) * 0.05;
+            camera.lookAt(averageX, 0, 0);
+        }
     }
 
     // Render the scene
     renderer.render(scene, camera);
 
-    // Check if we should advance to the next question
-    if (questionIndex < gameConfig.questionCount) {
-        // Wait a bit before advancing to next question
-        if (clock.getElapsedTime() > questionIndex * 3 + 1) {
-            advanceQuestion();
-        }
-    } else if (questionIndex === gameConfig.questionCount) {
-        // Game finished, determine winner
+    // Advance questions based on time
+    if (clock.getElapsedTime() > currentRound * 3 + 1) {
+        advanceRound();
+    }
+
+    // Check if all players have finished
+    if (allFinished && !gameFinished) {
+        gameFinished = true;
         determineWinner();
-        questionIndex++; // Prevent multiple winner determinations
     }
 }
 
-// Advance to the next question
-function advanceQuestion() {
-    questionIndex++;
-    document.getElementById('currentQuestion').textContent = questionIndex;
+// Advance to the next round
+function advanceRound() {
+    currentRound++;
+    document.getElementById('currentRound').textContent = currentRound;
 
-    // Update correct answers count and progress bars
+    // Process current question for each player
     pacMen.forEach((pacMan, index) => {
-        if (questionIndex > 0 && gameConfig.playerAnswers[index][questionIndex - 1] === 'Correct') {
-            pacMan.correctAnswers++;
-        }
+        if (pacMan.currentQuestion < pacMan.totalQuestions) {
+            const answer = gameConfig.playerAnswers[index][pacMan.currentQuestion];
 
-        // Update progress bar
-        const progressBar = document.getElementById(`progress${index}`);
-        if (progressBar) {
-            const progress = (pacMan.correctAnswers / gameConfig.questionCount) * 100;
-            progressBar.style.width = `${progress}%`;
+            if (answer === 'Correct') {
+                pacMan.correctAnswers++;
+            }
+
+            pacMan.currentQuestion++;
+
+            // Update progress bar and status
+            const progressBar = document.getElementById(`progress${index}`);
+            const statusText = document.getElementById(`status${index}`);
+
+            if (progressBar && statusText) {
+                const progress = (pacMan.currentQuestion / pacMan.totalQuestions) * 100;
+                progressBar.style.width = `${progress}%`;
+                statusText.textContent = `${pacMan.currentQuestion}/${pacMan.totalQuestions}`;
+
+                if (pacMan.currentQuestion >= pacMan.totalQuestions) {
+                    statusText.innerHTML = '✓ Finished';
+                    statusText.style.color = '#4CAF50';
+                }
+            }
         }
     });
 }
@@ -496,9 +559,9 @@ function determineWinner() {
     // Show winner celebration
     const winnerText = document.getElementById('winnerText');
     if (winners.length === 1) {
-        winnerText.textContent = `Winner: ${gameConfig.playerNames[winners[0]]}`;
+        winnerText.textContent = `Winner: ${gameConfig.playerNames[winners[0]]} (${maxCorrect} correct)`;
     } else {
-        winnerText.textContent = `Tie: ${winners.map(i => gameConfig.playerNames[i]).join(', ')}`;
+        winnerText.textContent = `Tie: ${winners.map(i => gameConfig.playerNames[i]).join(', ')} (${maxCorrect} correct each)`;
     }
 
     document.getElementById('winnerCelebration').style.display = 'flex';
