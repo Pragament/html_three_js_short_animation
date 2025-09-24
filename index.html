@@ -3,30 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Bowling Animation</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>Games Directory</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 10px 0;
+        }
+        a {
+            text-decoration: none;
+            color: #007BFF;
+            font-size: 1.2em;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <div id="container"></div>
-    <div id="info">
-        <h1>Fast Bowling Delivery</h1>
-        <p>Bowler to Batsman - OUT!</p>
-    </div>
-    
-    <div class="controls">
-        <button id="playBtn">Play Animation</button>
-        <button id="resetBtn">Reset</button>
-    </div>
-    
-    <div class="scoreboard">
-        <h3>Scoreboard</h3>
-        <p>Overs: 14.2</p>
-        <p>Score: 112/5</p>
-    </div>
-    
-    <div class="wicket-animation" id="wicketText">WICKET!</div>
-
-    <script src="script.js"></script>
+    <h1>Welcome to the Games Directory</h1>
+    <p>Select a game to explore:</p>
+    <ul>
+        <li><a href="./cricket">Cricket</a></li>
+        <li><a href="./pacman">Pacman</a></li>
+    </ul>
 </body>
 </html>

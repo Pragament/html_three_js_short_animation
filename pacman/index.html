@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man Quiz Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PAC-MAN QUIZ GAME</h1>
+            <div class="subtitle">Answer questions and race to the finish!</div>
+        </header>
+        
+        <div class="game-container">
+            <div class="config-panel" id="configPanel">
+                <h2 class="panel-title">Game Configuration</h2>
+                <div class="config-form">
+                    <div class="form-group">
+                        <label for="playerCount">Number of Players (1-4)</label>
+                        <select id="playerCount">
+                            <option value="1">1 Player</option>
+                            <option value="2" selected>2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4">4 Players</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="questionCount">Total Questions (1-20)</label>
+                        <input type="number" id="questionCount" min="1" max="20" value="10">
+                    </div>
+                    
+                    <div class="player-config">
+                        <h3>Player Answers</h3>
+                        <div id="playerAnswersContainer">
+                            <!-- Player answer inputs will be generated here -->
+                        </div>
+                    </div>
+                    
+                    <button id="startBtn" class="start-btn">Start Game</button>
+                </div>
+            </div>
+            
+            <div class="game-view" id="gameView">
+                <canvas id="gameCanvas"></canvas>
+                <div class="game-ui">
+                    <div class="question-counter">Question: <span id="currentQuestion">1</span>/<span id="totalQuestions">10</span></div>
+                    <div class="player-progress" id="playerProgress">
+                        <!-- Player progress bars will be generated here -->
+                    </div>
+                </div>
+                <div class="winner-celebration" id="winnerCelebration">
+                    <div class="winner-text" id="winnerText">Winner: Player 1</div>
+                    <button class="restart-btn" id="restartBtn">Play Again</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="url-info" id="urlInfo" style="display: none;">
+            <h3>Sample URLs for Testing:</h3>
+            <p><a href="?players=2&questions=5&p1=C,W,C,W,C&p2=W,W,C,W,C">2 Players, 5 Questions</a></p>
+            <p><a href="?players=3&questions=5&p1=C,W,C,W,C&p2=W,W,C,W,C&p3=C,C,W,W,C">3 Players, 5 Questions (Example from prompt)</a></p>
+            <p><a href="?players=4&questions=8&p1=C,C,W,C,W,C,C,W&p2=W,C,C,W,C,W,C,C&p3=C,W,C,C,W,W,C,C&p4=W,W,C,C,C,W,C,W">4 Players, 8 Questions</a></p>
+            <p><a href="?players=1&questions=3&p1=C,C,C">1 Player, 3 Questions (All Correct)</a></p>
+        </div>
+    </div>
+</body>
+</html>

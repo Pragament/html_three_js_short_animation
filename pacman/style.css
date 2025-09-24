@@ -1,0 +1,289 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  padding: 20px 0;
+  margin-bottom: 30px;
+}
+
+h1 {
+  font-size: 3rem;
+  color: #ffcc00;
+  text-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #a0a0ff;
+  margin-bottom: 30px;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.config-panel {
+  background: rgba(30, 30, 60, 0.8);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.panel-title {
+  font-size: 1.8rem;
+  color: #ffcc00;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.config-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #a0a0ff;
+  font-weight: 600;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #4a4a8a;
+  background: rgba(20, 20, 40, 0.8);
+  color: white;
+  font-size: 1rem;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #ffcc00;
+}
+
+.player-config {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+
+.player-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.answer-btn {
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px solid #4a4a8a;
+  background: rgba(20, 20, 40, 0.8);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.answer-btn.selected.correct {
+  background: #4CAF50;
+  border-color: #8BC34A;
+}
+
+.answer-btn.selected.wrong {
+  background: #F44336;
+  border-color: #E57373;
+}
+
+.start-btn {
+  grid-column: 1 / -1;
+  padding: 15px;
+  background: linear-gradient(135deg, #ffcc00 0%, #ff9500 100%);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.start-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(255, 204, 0, 0.4);
+}
+
+.game-view {
+  position: relative;
+  height: 600px;
+  background: rgba(10, 10, 20, 0.7);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  display: none;
+}
+
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.game-ui {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(30, 30, 60, 0.8);
+  padding: 15px;
+  border-radius: 10px;
+  min-width: 200px;
+}
+
+.question-counter {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #ffcc00;
+}
+
+.player-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.progress-bar {
+  flex-grow: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.5s;
+}
+
+.winner-celebration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 20;
+  display: none;
+}
+
+.winner-text {
+  font-size: 4rem;
+  color: #ffcc00;
+  text-shadow: 0 0 20px rgba(255, 204, 0, 0.8);
+  margin-bottom: 30px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.restart-btn {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #ffcc00 0%, #ff9500 100%);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.restart-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(255, 204, 0, 0.4);
+}
+
+.url-info {
+  background: rgba(30, 30, 60, 0.8);
+  border-radius: 15px;
+  padding: 15px;
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
+
+.url-info a {
+  color: #ffcc00;
+  word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .config-form {
+    grid-template-columns: 1fr;
+  }
+
+  .game-view {
+    height: 400px;
+  }
+
+  .winner-text {
+    font-size: 2.5rem;
+  }
+}
