@@ -32,20 +32,37 @@ function getUrlParams() {
 
     // Get questions and answers for each player
     for (let i = 1; i <= players; i++) {
-        const playerParam = params.get(`p${i}`);
-        if (!playerParam) return null;
-
-        const parts = playerParam.split('&');
-        if (parts.length < 2) return null;
-
-        const questionCount = parseInt(parts[0]);
+        // Get question count
+        const questionCountParam = params.get(`p${i}`);
+        if (!questionCountParam) return null;
+        
+        const questionCount = parseInt(questionCountParam);
         if (!questionCount || questionCount < 1 || questionCount > 20) return null;
 
         config.playerQuestions.push(questionCount);
 
-        // Get answers
-        const answers = parts[1];
-        const answerArray = answers.split(',').map(a =>
+        // Get answers - they come after the question count in the URL
+        // The URL format is: ?players=4&p1=8&C,C,W,C,W,C,C,W&p2=6&W,C,C,W,C,W...
+        // So we need to get all params and find the answer string after p{i}
+        const allParams = window.location.search.substring(1).split('&');
+        let answerString = null;
+        
+        for (let j = 0; j < allParams.length; j++) {
+            if (allParams[j].startsWith(`p${i}=`)) {
+                // Found the player param, next one should be the answers
+                if (j + 1 < allParams.length) {
+                    answerString = allParams[j + 1];
+                    // Remove any parameter name if it exists (in case it's the last player)
+                    if (!answerString.includes('=')) {
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!answerString) return null;
+        
+        const answerArray = answerString.split(',').map(a =>
             a.trim().toUpperCase() === 'C' ? 'Correct' : 'Wrong'
         );
 
@@ -58,6 +75,9 @@ function getUrlParams() {
 
 // Initialize the game
 function init() {
+    // Set up restart button event listener (always needed)
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+
     // Check for URL parameters
     const urlConfig = getUrlParams();
 
@@ -80,7 +100,6 @@ function init() {
         // Set up event listeners
         document.getElementById('playerCount').addEventListener('change', updatePlayerQuestionsUI);
         document.getElementById('startBtn').addEventListener('click', startGameFromUI);
-        document.getElementById('restartBtn').addEventListener('click', restartGame);
 
         // Initialize player questions UI
         updatePlayerQuestionsUI();
