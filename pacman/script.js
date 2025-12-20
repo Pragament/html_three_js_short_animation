@@ -1,19 +1,25 @@
 // Game configuration
 const gameConfig = {
     playerCount: 2,
-    playerQuestions: [5, 5], // Number of questions for each player
-    playerAnswers: [[], []], // Answers for each player
-    playerColors: [0xffcc00, 0x00ccff, 0xff00cc, 0x00ff66],
-    playerNames: ['Player 1', 'Player 2', 'Player 3', 'Player 4']
+    playerQuestions: [5, 5],
+    playerAnswers: [[], []],
+    playerColors: ['#FFCC00', '#00CCFF', '#FF00CC', '#00FF66'],
+    playerNames: ['Team Yellow', 'Team Blue', 'Team Green', 'Team Red']
 };
 
-// Three.js variables
-let scene, camera, renderer, maze, pacMen = [];
-let currentRound = 0;
+// Canvas and context
+let canvas, ctx;
 let gameStarted = false;
-let animationId = null;
-let clock = new THREE.Clock();
 let gameFinished = false;
+let currentRound = 0;
+let animationId = null;
+let startTime = 0;
+
+// Game objects
+let pacMen = [];
+let ghosts = [];
+let pellets = [];
+let powerPellets = [];
 
 // Parse URL parameters
 function getUrlParams() {
@@ -30,9 +36,7 @@ function getUrlParams() {
         playerAnswers: []
     };
 
-    // Get questions and answers for each player
     for (let i = 1; i <= players; i++) {
-        // Get question count
         const questionCountParam = params.get(`p${i}`);
         if (!questionCountParam) return null;
         
@@ -41,18 +45,13 @@ function getUrlParams() {
 
         config.playerQuestions.push(questionCount);
 
-        // Get answers - they come after the question count in the URL
-        // The URL format is: ?players=4&p1=8&C,C,W,C,W,C,C,W&p2=6&W,C,C,W,C,W...
-        // So we need to get all params and find the answer string after p{i}
         const allParams = window.location.search.substring(1).split('&');
         let answerString = null;
         
         for (let j = 0; j < allParams.length; j++) {
             if (allParams[j].startsWith(`p${i}=`)) {
-                // Found the player param, next one should be the answers
                 if (j + 1 < allParams.length) {
                     answerString = allParams[j + 1];
-                    // Remove any parameter name if it exists (in case it's the last player)
                     if (!answerString.includes('=')) {
                         break;
                     }
@@ -75,42 +74,31 @@ function getUrlParams() {
 
 // Initialize the game
 function init() {
-    // Set up restart button event listener (always needed)
     document.getElementById('restartBtn').addEventListener('click', restartGame);
 
-    // Check for URL parameters
     const urlConfig = getUrlParams();
 
     if (urlConfig) {
-        // Auto-start game with URL configuration
         gameConfig.playerCount = urlConfig.playerCount;
         gameConfig.playerQuestions = urlConfig.playerQuestions;
         gameConfig.playerAnswers = urlConfig.playerAnswers;
 
-        // Hide config panel and URL info
         document.getElementById('configPanel').style.display = 'none';
         document.getElementById('urlInfo').style.display = 'none';
 
-        // Start game directly
         startGameFromUrl();
     } else {
-        // Show normal configuration UI
         document.getElementById('urlInfo').style.display = 'block';
-
-        // Set up event listeners
         document.getElementById('playerCount').addEventListener('change', updatePlayerQuestionsUI);
         document.getElementById('startBtn').addEventListener('click', startGameFromUI);
-
-        // Initialize player questions UI
         updatePlayerQuestionsUI();
     }
 }
 
-// Update the player questions UI based on configuration
+// Update player questions UI
 function updatePlayerQuestionsUI() {
     const playerCount = parseInt(document.getElementById('playerCount').value);
     const container = document.getElementById('playerQuestionsContainer');
-
     container.innerHTML = '';
 
     for (let i = 0; i < playerCount; i++) {
@@ -118,30 +106,25 @@ function updatePlayerQuestionsUI() {
         playerDiv.className = 'player-question-set';
         playerDiv.innerHTML = `<h4>${gameConfig.playerNames[i]}</h4>`;
 
-        // Question count input
         const questionCountDiv = document.createElement('div');
         questionCountDiv.className = 'form-group';
         questionCountDiv.innerHTML = `
-                    <label for="questionCount${i}">Number of Questions (1-20)</label>
-                    <input type="number" id="questionCount${i}" min="1" max="20" value="5">
-                `;
+            <label for="questionCount${i}">Number of Questions (1-20)</label>
+            <input type="number" id="questionCount${i}" min="1" max="20" value="5">
+        `;
         playerDiv.appendChild(questionCountDiv);
 
-        // Answers section
         const answersDiv = document.createElement('div');
         answersDiv.className = 'player-answers';
         answersDiv.id = `playerAnswers${i}`;
         answersDiv.innerHTML = `<label>Answers:</label>`;
-
         playerDiv.appendChild(answersDiv);
         container.appendChild(playerDiv);
 
-        // Add event listener to update answers when question count changes
         document.getElementById(`questionCount${i}`).addEventListener('change', function () {
             updatePlayerAnswersUI(i);
         });
 
-        // Initialize answers UI
         updatePlayerAnswersUI(i);
     }
 }
@@ -151,12 +134,10 @@ function updatePlayerAnswersUI(playerIndex) {
     const questionCount = parseInt(document.getElementById(`questionCount${playerIndex}`).value);
     const answersDiv = document.getElementById(`playerAnswers${playerIndex}`);
 
-    // Remove existing answer buttons except the label
     while (answersDiv.children.length > 1) {
         answersDiv.removeChild(answersDiv.lastChild);
     }
 
-    // Create answer buttons
     for (let j = 0; j < questionCount; j++) {
         const answerBtn = document.createElement('button');
         answerBtn.className = 'answer-btn';
@@ -165,7 +146,6 @@ function updatePlayerAnswersUI(playerIndex) {
         answerBtn.dataset.question = j;
         answerBtn.addEventListener('click', toggleAnswer);
 
-        // Set default answers (alternating correct/wrong)
         if (j % 2 === 0) {
             answerBtn.classList.add('selected', 'correct');
         } else {
@@ -176,12 +156,9 @@ function updatePlayerAnswersUI(playerIndex) {
     }
 }
 
-// Toggle answer state (correct/wrong)
+// Toggle answer state
 function toggleAnswer(e) {
     const btn = e.target;
-    const player = parseInt(btn.dataset.player);
-    const question = parseInt(btn.dataset.question);
-
     if (!btn.classList.contains('selected') || btn.classList.contains('wrong')) {
         btn.classList.remove('wrong');
         btn.classList.add('selected', 'correct');
@@ -191,159 +168,8 @@ function toggleAnswer(e) {
     }
 }
 
-// Set up Three.js scene
-function setupThreeJSScene() {
-    // Create scene
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a14);
-
-    // Create camera
-    const canvas = document.getElementById('gameCanvas');
-    camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-    camera.position.set(0, 15, 15);
-    camera.lookAt(0, 0, 0);
-
-    // Create renderer
-    renderer = new THREE.WebGLRenderer({
-        canvas: canvas,
-        antialias: true,
-        alpha: true
-    });
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 20, 10);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 50;
-    directionalLight.shadow.camera.left = -20;
-    directionalLight.shadow.camera.right = 20;
-    directionalLight.shadow.camera.top = 20;
-    directionalLight.shadow.camera.bottom = -20;
-    scene.add(directionalLight);
-
-    // Add a point light for better visibility
-    const pointLight = new THREE.PointLight(0xffffff, 0.5);
-    pointLight.position.set(0, 10, 0);
-    scene.add(pointLight);
-
-    // Handle window resize
-    window.addEventListener('resize', onWindowResize);
-}
-
-// Create the maze - now dynamic based on max questions
-function createMaze() {
-    maze = new THREE.Group();
-
-    // Find maximum number of questions among players
-    const maxQuestions = Math.max(...gameConfig.playerQuestions);
-
-    // Create floor
-    const floorGeometry = new THREE.PlaneGeometry(40, 40);
-    const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x1a1a3e,
-        roughness: 0.8,
-        metalness: 0.2
-    });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    maze.add(floor);
-
-    // Create path markers for maximum questions
-    const pathGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
-    const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2a5a });
-
-    for (let i = 0; i < maxQuestions; i++) {
-        const pathMarker = new THREE.Mesh(pathGeometry, pathMaterial);
-        pathMarker.position.x = -15 + (i * 30 / (maxQuestions - 1));
-        pathMarker.position.y = 0.05;
-        pathMarker.receiveShadow = true;
-        maze.add(pathMarker);
-    }
-
-    // Create walls
-    const wallGeometry = new THREE.BoxGeometry(40, 2, 1);
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4a8a });
-
-    const topWall = new THREE.Mesh(wallGeometry, wallMaterial);
-    topWall.position.z = -20;
-    topWall.position.y = 1;
-    topWall.castShadow = true;
-    maze.add(topWall);
-
-    const bottomWall = new THREE.Mesh(wallGeometry, wallMaterial);
-    bottomWall.position.z = 20;
-    bottomWall.position.y = 1;
-    bottomWall.castShadow = true;
-    maze.add(bottomWall);
-
-    scene.add(maze);
-}
-
-// Create Pac-Man characters
-function createPacMen() {
-    pacMen = [];
-    const maxQuestions = Math.max(...gameConfig.playerQuestions);
-
-    for (let i = 0; i < gameConfig.playerCount; i++) {
-        // Create Pac-Man body (sphere with a segment removed for the mouth)
-        const pacManGeometry = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI * 2, 0, Math.PI * 1.8);
-        const pacManMaterial = new THREE.MeshStandardMaterial({
-            color: gameConfig.playerColors[i],
-            emissive: gameConfig.playerColors[i],
-            emissiveIntensity: 0.2
-        });
-
-        const pacMan = new THREE.Mesh(pacManGeometry, pacManMaterial);
-        pacMan.position.set(-15, 1, -10 + i * 6);
-        pacMan.castShadow = true;
-
-        // Add eye
-        const eyeGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-        const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        eye.position.set(0.4, 0.5, 0.6);
-        pacMan.add(eye);
-
-        scene.add(pacMan);
-        pacMen.push({
-            mesh: pacMan,
-            currentQuestion: 0,
-            totalQuestions: gameConfig.playerQuestions[i],
-            mouthOpen: true,
-            mouthDirection: 1,
-            correctAnswers: 0,
-            mouthAnimationTime: 0,
-            finished: false
-        });
-
-        // Create player progress UI
-        const progressItem = document.createElement('div');
-        progressItem.className = 'progress-item';
-        progressItem.innerHTML = `
-                    <div class="player-color" style="background-color: #${gameConfig.playerColors[i].toString(16).padStart(6, '0')}"></div>
-                    <div>${gameConfig.playerNames[i]}</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress${i}" style="width: 0%; background-color: #${gameConfig.playerColors[i].toString(16).padStart(6, '0')}"></div>
-                    </div>
-                    <div class="player-status" id="status${i}">0/${gameConfig.playerQuestions[i]}</div>
-                `;
-        document.getElementById('playerProgress').appendChild(progressItem);
-    }
-}
-
-// Start the game from UI configuration
+// Start game from UI
 function startGameFromUI() {
-    // Get configuration from UI
     gameConfig.playerCount = parseInt(document.getElementById('playerCount').value);
     gameConfig.playerQuestions = [];
     gameConfig.playerAnswers = [];
@@ -365,194 +191,558 @@ function startGameFromUI() {
     startGameCommon();
 }
 
-// Start the game from URL parameters
+// Start game from URL
 function startGameFromUrl() {
-    // Configuration already set from URL parameters
     startGameCommon();
 }
 
 // Common game start logic
 function startGameCommon() {
-    // Switch to game view
     document.getElementById('configPanel').style.display = 'none';
     document.getElementById('gameView').style.display = 'block';
     document.getElementById('urlInfo').style.display = 'none';
 
-    // Set up Three.js scene
-    setupThreeJSScene();
+    setupCanvas();
+    createGameObjects();
 
-    // Create maze and Pac-Man characters
-    createMaze();
-    createPacMen();
-
-    // Start the game animation
     gameStarted = true;
     gameFinished = false;
     currentRound = 0;
-    clock.start();
+    startTime = Date.now();
     animate();
 }
 
-// Restart the game
-function restartGame() {
-    // Reset game state
-    gameStarted = false;
-    gameFinished = false;
-    currentRound = 0;
+// Setup canvas
+function setupCanvas() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    
+    window.addEventListener('resize', () => {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    });
+}
 
-    // Hide winner celebration
-    document.getElementById('winnerCelebration').style.display = 'none';
+// Maze path definition - classic Pac-Man style corridors
+const mazePath = [
+    // Start position -> right -> up -> right -> down -> right -> exit
+    { x: 150, y: 300, dir: 'right' },
+    { x: 250, y: 300, dir: 'up' },
+    { x: 250, y: 200, dir: 'right' },
+    { x: 400, y: 200, dir: 'down' },
+    { x: 400, y: 350, dir: 'right' },
+    { x: 550, y: 350, dir: 'up' },
+    { x: 550, y: 250, dir: 'right' },
+    { x: 700, y: 250, dir: 'down' },
+    { x: 700, y: 350, dir: 'right' },
+    { x: 850, y: 350, dir: 'exit' } // Exit point
+];
 
-    // Clear scene
-    if (scene) {
-        while (scene.children.length > 0) {
-            scene.remove(scene.children[0]);
+// Create game objects
+function createGameObjects() {
+    pacMen = [];
+    ghosts = [];
+    pellets = [];
+    powerPellets = [];
+    
+    const maxQuestions = Math.max(...gameConfig.playerQuestions);
+    
+    // Create Pac-Men - all start at the beginning of the maze
+    for (let i = 0; i < gameConfig.playerCount; i++) {
+        const startOffset = i * 35; // Stagger start positions
+        const verticalOffset = (i - (gameConfig.playerCount - 1) / 2) * 25; // Vertical spacing
+        
+        pacMen.push({
+            x: mazePath[0].x - startOffset,
+            y: mazePath[0].y + verticalOffset,
+            size: 18,
+            color: gameConfig.playerColors[i],
+            mouthOpen: 0,
+            direction: 0, // 0=right, 90=down, 180=left, 270=up
+            currentQuestion: 0,
+            totalQuestions: gameConfig.playerQuestions[i],
+            correctAnswers: 0,
+            pathIndex: 0,
+            targetPathIndex: 0,
+            finished: false,
+            hitByGhost: false,
+            hitTime: 0,
+            speed: 2,
+            verticalOffset: verticalOffset, // Store offset for path following
+            lane: i // Lane identifier
+        });
+    }
+    
+    // Create pellets along the maze path
+    for (let i = 0; i < mazePath.length - 1; i++) {
+        const start = mazePath[i];
+        const end = mazePath[i + 1];
+        
+        // Calculate number of pellets for this segment
+        const distance = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+        const pelletCount = Math.floor(distance / 20);
+        
+        for (let j = 0; j < pelletCount; j++) {
+            const t = j / pelletCount;
+            pellets.push({
+                x: start.x + (end.x - start.x) * t,
+                y: start.y + (end.y - start.y) * t,
+                size: 3,
+                eaten: false
+            });
         }
     }
-
-    // Clear progress UI
-    document.getElementById('playerProgress').innerHTML = '';
-
-    // Check if we came from URL parameters or UI
-    const urlConfig = getUrlParams();
-
-    if (urlConfig) {
-        // Restart with URL parameters
-        gameConfig.playerCount = urlConfig.playerCount;
-        gameConfig.playerQuestions = urlConfig.playerQuestions;
-        gameConfig.playerAnswers = urlConfig.playerAnswers;
-
-        // Start game directly
-        startGameFromUrl();
-    } else {
-        // Show configuration panel
-        document.getElementById('configPanel').style.display = 'block';
-        document.getElementById('gameView').style.display = 'none';
-        document.getElementById('urlInfo').style.display = 'block';
-
-        // Cancel animation
-        if (animationId) {
-            cancelAnimationFrame(animationId);
-            animationId = null;
-        }
+    
+    // Create power pellets at key points
+    powerPellets.push({
+        x: mazePath[0].x,
+        y: mazePath[0].y,
+        size: 10,
+        pulse: 0
+    });
+    
+    powerPellets.push({
+        x: mazePath[Math.floor(mazePath.length / 2)].x,
+        y: mazePath[Math.floor(mazePath.length / 2)].y,
+        size: 10,
+        pulse: 0
+    });
+    
+    powerPellets.push({
+        x: mazePath[mazePath.length - 2].x,
+        y: mazePath[mazePath.length - 2].y,
+        size: 10,
+        pulse: 0
+    });
+    
+    // Create ghosts - start in the ghost house (above and right of the path)
+    const centerX = canvas.width / 2 + 150; // Match ghost house position
+    const centerY = canvas.height / 2 - 120; // Match ghost house position
+    
+    for (let i = 0; i < gameConfig.playerCount; i++) {
+        const angle = (i / gameConfig.playerCount) * Math.PI * 2;
+        
+        ghosts.push({
+            x: centerX + Math.cos(angle) * 30,
+            y: centerY + Math.sin(angle) * 30,
+            size: 18,
+            color: ['#FF0000', '#FFB8FF', '#00FFFF', '#FFB852'][i % 4],
+            targetX: centerX,
+            targetY: centerY,
+            chasing: false,
+            speed: 1.5,
+            wanderAngle: angle,
+            homeX: centerX, // Store home position
+            homeY: centerY
+        });
+    }
+    
+    // Update progress UI
+    const progressContainer = document.getElementById('playerProgress');
+    progressContainer.innerHTML = '';
+    
+    for (let i = 0; i < gameConfig.playerCount; i++) {
+        const progressItem = document.createElement('div');
+        progressItem.className = 'progress-item';
+        progressItem.innerHTML = `
+            <div class="player-color" style="background-color: ${gameConfig.playerColors[i]}"></div>
+            <div>${gameConfig.playerNames[i]}</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress${i}" style="width: 0%; background-color: ${gameConfig.playerColors[i]}"></div>
+            </div>
+            <div class="player-status" id="status${i}">0/${gameConfig.playerQuestions[i]}</div>
+        `;
+        progressContainer.appendChild(progressItem);
     }
 }
 
-// Animate the game
+// Draw Pac-Man
+function drawPacMan(pacMan) {
+    ctx.save();
+    ctx.translate(pacMan.x, pacMan.y);
+    ctx.rotate(pacMan.direction); // Rotate to face movement direction
+    
+    // Draw Pac-Man body
+    ctx.fillStyle = pacMan.color;
+    ctx.beginPath();
+    
+    const mouthAngle = 0.2 + Math.abs(Math.sin(pacMan.mouthOpen)) * 0.3;
+    ctx.arc(0, 0, pacMan.size, mouthAngle * Math.PI, (2 - mouthAngle) * Math.PI);
+    ctx.lineTo(0, 0);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw eye
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(6, -6, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+// Draw Ghost
+function drawGhost(ghost) {
+    ctx.save();
+    ctx.translate(ghost.x, ghost.y);
+    
+    // Ghost body
+    ctx.fillStyle = ghost.color;
+    ctx.beginPath();
+    ctx.arc(0, -10, ghost.size * 0.8, Math.PI, 0, false);
+    ctx.lineTo(ghost.size * 0.8, 10);
+    
+    // Wavy bottom
+    for (let i = 0; i < 3; i++) {
+        ctx.lineTo(ghost.size * 0.8 - (i + 0.5) * (ghost.size * 0.53), 10 + (i % 2 === 0 ? 5 : 0));
+    }
+    ctx.lineTo(-ghost.size * 0.8, 10);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(-8, -8, 6, 0, Math.PI * 2);
+    ctx.arc(8, -8, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pupils
+    ctx.fillStyle = '#00F';
+    ctx.beginPath();
+    ctx.arc(-8, -8, 3, 0, Math.PI * 2);
+    ctx.arc(8, -8, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+}
+
+// Draw pellet
+function drawPellet(pellet) {
+    if (pellet.eaten) return;
+    
+    ctx.fillStyle = '#FFB8AE';
+    ctx.beginPath();
+    ctx.arc(pellet.x, pellet.y, pellet.size, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// Draw power pellet
+function drawPowerPellet(powerPellet) {
+    const size = powerPellet.size + Math.sin(powerPellet.pulse) * 4;
+    
+    ctx.fillStyle = '#FFFF00';
+    ctx.shadowColor = '#FFFF00';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(powerPellet.x, powerPellet.y, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+// Draw maze with corridors
+function drawMaze() {
+    // Draw outer border
+    ctx.strokeStyle = '#2121FF';
+    ctx.lineWidth = 10;
+    ctx.shadowColor = '#2121FF';
+    ctx.shadowBlur = 15;
+    ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+    ctx.shadowBlur = 0;
+    
+    // Draw the path corridors (where Pac-Man can move)
+    ctx.strokeStyle = '#1a1a3e';
+    ctx.lineWidth = 50;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    ctx.moveTo(mazePath[0].x, mazePath[0].y);
+    for (let i = 1; i < mazePath.length; i++) {
+        ctx.lineTo(mazePath[i].x, mazePath[i].y);
+    }
+    ctx.stroke();
+    
+    // Draw corridor borders (blue walls)
+    ctx.strokeStyle = '#2121FF';
+    ctx.lineWidth = 8;
+    ctx.shadowColor = '#2121FF';
+    ctx.shadowBlur = 10;
+    
+    ctx.beginPath();
+    ctx.moveTo(mazePath[0].x, mazePath[0].y);
+    for (let i = 1; i < mazePath.length; i++) {
+        ctx.lineTo(mazePath[i].x, mazePath[i].y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    // Draw ghost house above and to the right of the main path
+    const centerX = canvas.width / 2 + 150; // Move right by 150 pixels
+    const centerY = canvas.height / 2 - 120; // Move up by 120 pixels
+    const boxSize = 100;
+    
+    ctx.fillStyle = '#1a1a3e';
+    ctx.fillRect(centerX - boxSize / 2, centerY - boxSize / 2, boxSize, boxSize);
+    
+    ctx.strokeStyle = '#FF69B4';
+    ctx.lineWidth = 6;
+    ctx.shadowColor = '#FF69B4';
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(centerX - boxSize / 2, centerY - boxSize / 2, boxSize, boxSize);
+    ctx.shadowBlur = 0;
+    
+    // Ghost house label
+    ctx.fillStyle = '#FF69B4';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('GHOST', centerX, centerY - 10);
+    ctx.fillText('HOUSE', centerX, centerY + 10);
+    
+    // Draw START marker
+    ctx.fillStyle = '#00FF00';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('START', mazePath[0].x, mazePath[0].y - 40);
+    
+    // Draw arrow pointing to start
+    ctx.strokeStyle = '#00FF00';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(mazePath[0].x - 20, mazePath[0].y - 30);
+    ctx.lineTo(mazePath[0].x, mazePath[0].y - 35);
+    ctx.lineTo(mazePath[0].x + 20, mazePath[0].y - 30);
+    ctx.stroke();
+    
+    // Draw EXIT marker
+    const exitPoint = mazePath[mazePath.length - 1];
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('🏁 EXIT', exitPoint.x, exitPoint.y - 30);
+    
+    // Draw exit arrow
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(exitPoint.x - 10, exitPoint.y + 20);
+    ctx.lineTo(exitPoint.x + 10, exitPoint.y + 20);
+    ctx.lineTo(exitPoint.x, exitPoint.y + 35);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// Main animation loop
 function animate() {
     if (!gameStarted) return;
-
+    
     animationId = requestAnimationFrame(animate);
-    const delta = clock.getDelta();
-
-    // Update Pac-Man animations
+    
+    // Clear canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw maze
+    drawMaze();
+    
     let allFinished = true;
-
+    
+    // Draw all pellets first
+    pellets.forEach(pellet => drawPellet(pellet));
+    
+    // Draw power pellets
+    powerPellets.forEach(powerPellet => {
+        powerPellet.pulse += 0.1;
+        drawPowerPellet(powerPellet);
+    });
+    
+    // Update and draw game objects
     pacMen.forEach((pacMan, index) => {
-        if (pacMan.finished) return;
-
-        allFinished = false;
-
-        // Animate mouth
-        pacMan.mouthAnimationTime += delta;
-        const mouthSpeed = 5;
-
-        if (pacMan.mouthAnimationTime > 1 / mouthSpeed) {
-            pacMan.mouthOpen = !pacMan.mouthOpen;
-            pacMan.mouthAnimationTime = 0;
-
-            // Update geometry for mouth animation
-            if (pacMan.mesh && pacMan.mesh.geometry) {
-                pacMan.mesh.geometry.dispose();
-                pacMan.mesh.geometry = new THREE.SphereGeometry(
-                    1, 32, 32, 0, Math.PI * 2, 0,
-                    pacMan.mouthOpen ? Math.PI * 1.6 : Math.PI * 1.9
-                );
+        if (!pacMan.finished) {
+            allFinished = false;
+            
+            // Animate mouth
+            pacMan.mouthOpen += 0.2;
+            
+            // Process current question
+            if (pacMan.currentQuestion < pacMan.totalQuestions) {
+                const answer = gameConfig.playerAnswers[index][pacMan.currentQuestion];
+                
+                if (answer === 'Correct') {
+                    // Move along the maze path
+                    if (pacMan.pathIndex < pacMan.targetPathIndex && pacMan.pathIndex < mazePath.length - 1) {
+                        const target = mazePath[pacMan.pathIndex + 1];
+                        const targetX = target.x;
+                        const targetY = target.y + pacMan.verticalOffset; // Apply vertical offset
+                        
+                        const dx = targetX - pacMan.x;
+                        const dy = targetY - pacMan.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance > 5) {
+                            // Move towards next waypoint
+                            pacMan.x += (dx / distance) * pacMan.speed;
+                            pacMan.y += (dy / distance) * pacMan.speed;
+                            
+                            // Update direction for Pac-Man rotation
+                            pacMan.direction = Math.atan2(dy, dx);
+                        } else {
+                            // Reached waypoint, move to next
+                            pacMan.pathIndex++;
+                            pacMan.x = targetX;
+                            pacMan.y = targetY;
+                        }
+                    }
+                    
+                    // Eat pellets
+                    pellets.forEach(pellet => {
+                        if (!pellet.eaten && Math.abs(pacMan.x - pellet.x) < 20 && Math.abs(pacMan.y - pellet.y) < 20) {
+                            pellet.eaten = true;
+                            createPelletEffect(pellet.x, pellet.y);
+                        }
+                    });
+                    
+                    // Check if reached exit
+                    if (pacMan.pathIndex >= mazePath.length - 1) {
+                        pacMan.finished = true;
+                    }
+                } else {
+                    // Hit by ghost - shake and pause
+                    if (!pacMan.hitByGhost) {
+                        pacMan.hitByGhost = true;
+                        pacMan.hitTime = Date.now();
+                        ghosts[index].chasing = true;
+                        ghosts[index].targetX = pacMan.x;
+                        ghosts[index].targetY = pacMan.y;
+                    }
+                    
+                    const shakeTime = Date.now() - pacMan.hitTime;
+                    if (shakeTime < 1500) {
+                        // Shake effect - stay in place
+                        const baseX = mazePath[pacMan.pathIndex].x;
+                        const baseY = mazePath[pacMan.pathIndex].y + pacMan.verticalOffset;
+                        pacMan.x = baseX + Math.sin(shakeTime * 0.1) * 5;
+                        pacMan.y = baseY + Math.cos(shakeTime * 0.1) * 5;
+                    } else {
+                        // Return to path
+                        pacMan.x = mazePath[pacMan.pathIndex].x;
+                        pacMan.y = mazePath[pacMan.pathIndex].y + pacMan.verticalOffset;
+                        pacMan.hitByGhost = false;
+                    }
+                }
+            } else {
+                pacMan.finished = true;
             }
         }
-
-        // Process current question if player has more questions
-        if (pacMan.currentQuestion < pacMan.totalQuestions) {
-            const answer = gameConfig.playerAnswers[index][pacMan.currentQuestion];
-
-            if (answer === 'Correct') {
-                // Move forward
-                const maxQuestions = Math.max(...gameConfig.playerQuestions);
-                const targetX = -15 + (pacMan.correctAnswers * 30 / (maxQuestions - 1));
-                pacMan.mesh.position.x += (targetX - pacMan.mesh.position.x) * 0.1;
-
-                // Add green glow effect
-                pacMan.mesh.material.emissive.setHex(0x00ff00);
-                pacMan.mesh.material.emissiveIntensity = 0.5;
+        
+        // Draw Pac-Man
+        drawPacMan(pacMan);
+        
+        // Update and draw ghost
+        const ghost = ghosts[index];
+        if (ghost.chasing) {
+            // Chase the Pac-Man
+            const dx = ghost.targetX - ghost.x;
+            const dy = ghost.targetY - ghost.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                ghost.x += (dx / distance) * ghost.speed;
+                ghost.y += (dy / distance) * ghost.speed;
             } else {
-                // Bounce effect for wrong answers
-                pacMan.mesh.position.y = 1 + Math.sin(Date.now() * 0.01) * 0.3;
-
-                // Add red flash effect
-                pacMan.mesh.material.emissive.setHex(0xff0000);
-                pacMan.mesh.material.emissiveIntensity = 0.5;
+                ghost.chasing = false;
+                // Return to ghost house
+                ghost.targetX = ghost.homeX;
+                ghost.targetY = ghost.homeY;
             }
         } else {
-            // Player has finished all questions
-            pacMan.finished = true;
+            // Wander in ghost house
+            ghost.wanderAngle += 0.05;
+            ghost.targetX = ghost.homeX + Math.cos(ghost.wanderAngle) * 30;
+            ghost.targetY = ghost.homeY + Math.sin(ghost.wanderAngle) * 30;
+            
+            ghost.x += (ghost.targetX - ghost.x) * 0.05;
+            ghost.y += (ghost.targetY - ghost.y) * 0.05;
         }
-
-        // Gradually reduce emissive intensity
-        pacMan.mesh.material.emissiveIntensity *= 0.95;
+        drawGhost(ghost);
     });
-
-    // Update camera to follow the Pac-Men
-    if (pacMen.length > 0) {
-        const activePacMen = pacMen.filter(p => !p.finished);
-        if (activePacMen.length > 0) {
-            const averageX = activePacMen.reduce((sum, pacMan) => sum + pacMan.mesh.position.x, 0) / activePacMen.length;
-            camera.position.x += (averageX - camera.position.x) * 0.05;
-            camera.lookAt(averageX, 0, 0);
-        }
-    }
-
-    // Render the scene
-    renderer.render(scene, camera);
-
-    // Advance questions based on time
-    if (clock.getElapsedTime() > currentRound * 3 + 1) {
+    
+    // Advance rounds
+    const elapsed = (Date.now() - startTime) / 1000;
+    if (elapsed > (currentRound + 1) * 2 && currentRound < Math.max(...gameConfig.playerQuestions)) {
         advanceRound();
     }
-
-    // Check if all players have finished
+    
+    // Check if finished
     if (allFinished && !gameFinished) {
         gameFinished = true;
         determineWinner();
     }
 }
 
-// Advance to the next round
+// Create pellet eating effect
+function createPelletEffect(x, y) {
+    // Visual feedback - score popup
+    const scoreText = {
+        x: x,
+        y: y,
+        alpha: 1,
+        text: '+10'
+    };
+    
+    function animateScore() {
+        if (scoreText.alpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = scoreText.alpha;
+            ctx.fillStyle = '#FFFF00';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(scoreText.text, scoreText.x, scoreText.y);
+            ctx.restore();
+            
+            scoreText.y -= 1;
+            scoreText.alpha -= 0.02;
+            requestAnimationFrame(animateScore);
+        }
+    }
+    animateScore();
+}
+
+// Advance to next round
 function advanceRound() {
     currentRound++;
     document.getElementById('currentRound').textContent = currentRound;
-
-    // Process current question for each player
+    
+    const maxQuestions = Math.max(...gameConfig.playerQuestions);
+    
     pacMen.forEach((pacMan, index) => {
         if (pacMan.currentQuestion < pacMan.totalQuestions) {
             const answer = gameConfig.playerAnswers[index][pacMan.currentQuestion];
-
+            
             if (answer === 'Correct') {
                 pacMan.correctAnswers++;
+                // Advance Pac-Man along the path
+                const pathProgress = pacMan.correctAnswers / maxQuestions;
+                pacMan.targetPathIndex = Math.min(
+                    Math.floor(pathProgress * (mazePath.length - 1)),
+                    mazePath.length - 1
+                );
             }
-
+            
             pacMan.currentQuestion++;
-
-            // Update progress bar and status
+            
+            // Update progress
+            const progress = (pacMan.currentQuestion / pacMan.totalQuestions) * 100;
             const progressBar = document.getElementById(`progress${index}`);
             const statusText = document.getElementById(`status${index}`);
-
+            
             if (progressBar && statusText) {
-                const progress = (pacMan.currentQuestion / pacMan.totalQuestions) * 100;
                 progressBar.style.width = `${progress}%`;
-                statusText.textContent = `${pacMan.currentQuestion}/${pacMan.totalQuestions}`;
-
+                statusText.textContent = 
+                    pacMan.currentQuestion >= pacMan.totalQuestions ? 
+                    '✓ Finished' : `${pacMan.currentQuestion}/${pacMan.totalQuestions}`;
+                
                 if (pacMan.currentQuestion >= pacMan.totalQuestions) {
-                    statusText.innerHTML = '✓ Finished';
                     statusText.style.color = '#4CAF50';
                 }
             }
@@ -560,12 +750,13 @@ function advanceRound() {
     });
 }
 
-// Determine the winner and show celebration
+// Determine winner
 function determineWinner() {
-    // Find the player(s) with the most correct answers
     let maxCorrect = 0;
     let winners = [];
-
+    let loser = null;
+    let minCorrect = Infinity;
+    
     pacMen.forEach((pacMan, index) => {
         if (pacMan.correctAnswers > maxCorrect) {
             maxCorrect = pacMan.correctAnswers;
@@ -573,99 +764,151 @@ function determineWinner() {
         } else if (pacMan.correctAnswers === maxCorrect) {
             winners.push(index);
         }
+        
+        if (pacMan.correctAnswers < minCorrect) {
+            minCorrect = pacMan.correctAnswers;
+            loser = index;
+        }
     });
-
-    // Show winner celebration
+    
     const winnerText = document.getElementById('winnerText');
     if (winners.length === 1) {
-        winnerText.textContent = `Winner: ${gameConfig.playerNames[winners[0]]} (${maxCorrect} correct)`;
+        winnerText.textContent = `Winner: ${gameConfig.playerNames[winners[0]]} (${maxCorrect} correct) 🏆`;
     } else {
-        winnerText.textContent = `Tie: ${winners.map(i => gameConfig.playerNames[i]).join(', ')} (${maxCorrect} correct each)`;
+        winnerText.textContent = `Tie: ${winners.map(i => gameConfig.playerNames[i]).join(', ')} (${maxCorrect} correct each) 🏆`;
     }
-
+    
     document.getElementById('winnerCelebration').style.display = 'flex';
-
-    // Animate winner Pac-Man(s)
+    
+    // Winner animation - eat through the maze to EXIT!
     winners.forEach(winnerIndex => {
-        const winnerPacMan = pacMen[winnerIndex];
-
-        // Make winner larger
-        winnerPacMan.mesh.scale.set(1.5, 1.5, 1.5);
-
-        // Jump animation
-        winnerPacMan.mesh.position.y = 1 + Math.sin(Date.now() * 0.01) * 0.5;
-
-        // Golden glow
-        winnerPacMan.mesh.material.emissive.setHex(0xffcc00);
-        winnerPacMan.mesh.material.emissiveIntensity = 0.8;
-    });
-
-    // Create confetti effect
-    createConfetti();
-}
-
-// Create confetti effect
-function createConfetti() {
-    const confettiCount = 200;
-    const confettiGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-
-    for (let i = 0; i < confettiCount; i++) {
-        const confettiMaterial = new THREE.MeshStandardMaterial({
-            color: Math.random() * 0xffffff
-        });
-
-        const confetti = new THREE.Mesh(confettiGeometry, confettiMaterial);
-        confetti.position.set(
-            Math.random() * 20 - 10,
-            Math.random() * 10 + 5,
-            Math.random() * 20 - 10
-        );
-
-        confetti.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-
-        scene.add(confetti);
-
-        // Animate confetti falling
-        (function (confetti) {
-            const speed = 0.02 + Math.random() * 0.03;
-            const spinSpeed = 0.02 + Math.random() * 0.03;
-            let falling = true;
-
-            function fall() {
-                if (!falling) return;
-
-                confetti.position.y -= speed;
-                confetti.rotation.x += spinSpeed;
-                confetti.rotation.y += spinSpeed;
-
-                if (confetti.position.y > -5) {
-                    requestAnimationFrame(fall);
+        const pacMan = pacMen[winnerIndex];
+        let growing = true;
+        pacMan.speed = 3; // Speed up the winner
+        
+        function winnerAnimation() {
+            if (gameFinished) {
+                // Grow bigger
+                if (growing && pacMan.size < 28) {
+                    pacMan.size += 0.3;
                 } else {
-                    falling = false;
-                    if (scene) {
-                        scene.remove(confetti);
+                    growing = false;
+                }
+                
+                // Continue eating through the maze path
+                if (pacMan.pathIndex < mazePath.length - 1) {
+                    const target = mazePath[pacMan.pathIndex + 1];
+                    const targetX = target.x;
+                    const targetY = target.y + pacMan.verticalOffset;
+                    
+                    const dx = targetX - pacMan.x;
+                    const dy = targetY - pacMan.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 5) {
+                        // Move towards next waypoint
+                        pacMan.x += (dx / distance) * pacMan.speed;
+                        pacMan.y += (dy / distance) * pacMan.speed;
+                        
+                        // Update direction
+                        pacMan.direction = Math.atan2(dy, dx);
+                    } else {
+                        // Reached waypoint, move to next
+                        pacMan.pathIndex++;
+                        if (pacMan.pathIndex < mazePath.length) {
+                            pacMan.x = targetX;
+                            pacMan.y = targetY;
+                        }
                     }
+                    
+                    // Eat remaining pellets
+                    pellets.forEach(pellet => {
+                        if (!pellet.eaten && Math.abs(pacMan.x - pellet.x) < 25 && Math.abs(pacMan.y - pellet.y) < 25) {
+                            pellet.eaten = true;
+                            createPelletEffect(pellet.x, pellet.y);
+                        }
+                    });
+                } else {
+                    // Reached exit - continue moving out
+                    pacMan.x += Math.cos(pacMan.direction) * pacMan.speed;
+                    pacMan.y += Math.sin(pacMan.direction) * pacMan.speed;
+                }
+                
+                // Animate mouth
+                pacMan.mouthOpen += 0.4;
+                
+                // Rainbow color effect
+                const hue = (Date.now() / 20) % 360;
+                pacMan.color = `hsl(${hue}, 100%, 50%)`;
+                
+                // Continue animation until off screen
+                if (pacMan.x < canvas.width + 50 && pacMan.y < canvas.height + 50) {
+                    requestAnimationFrame(winnerAnimation);
                 }
             }
-
-            fall();
-        })(confetti);
+        }
+        winnerAnimation();
+    });
+    
+    // Loser gets chased by ALL ghosts! 😄
+    if (loser !== null && !winners.includes(loser)) {
+        const loserPacMan = pacMen[loser];
+        
+        // All ghosts chase the loser
+        ghosts.forEach((ghost, idx) => {
+            ghost.chasing = true;
+            ghost.speed = 3;
+        });
+        
+        function chaseAnimation() {
+            if (gameFinished) {
+                // Loser runs away (backwards)
+                loserPacMan.x -= 2;
+                loserPacMan.y += Math.sin(Date.now() * 0.01) * 3; // Panic movement
+                
+                // All ghosts chase
+                ghosts.forEach(ghost => {
+                    ghost.targetX = loserPacMan.x - 40;
+                    ghost.targetY = loserPacMan.y;
+                    ghost.x += (ghost.targetX - ghost.x) * 0.15;
+                    ghost.y += (ghost.targetY - ghost.y) * 0.15;
+                });
+                
+                if (loserPacMan.x > 80) {
+                    requestAnimationFrame(chaseAnimation);
+                }
+            }
+        }
+        chaseAnimation();
     }
 }
 
-// Handle window resize
-function onWindowResize() {
-    const canvas = document.getElementById('gameCanvas');
-    if (!canvas || !camera || !renderer) return;
-
-    camera.aspect = canvas.clientWidth / canvas.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+// Restart game
+function restartGame() {
+    gameStarted = false;
+    gameFinished = false;
+    currentRound = 0;
+    
+    document.getElementById('winnerCelebration').style.display = 'none';
+    
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+    
+    const urlConfig = getUrlParams();
+    
+    if (urlConfig) {
+        gameConfig.playerCount = urlConfig.playerCount;
+        gameConfig.playerQuestions = urlConfig.playerQuestions;
+        gameConfig.playerAnswers = urlConfig.playerAnswers;
+        startGameFromUrl();
+    } else {
+        document.getElementById('configPanel').style.display = 'block';
+        document.getElementById('gameView').style.display = 'none';
+        document.getElementById('urlInfo').style.display = 'block';
+    }
 }
 
-// Initialize the game when the page loads
+// Initialize on load
 window.addEventListener('load', init);
