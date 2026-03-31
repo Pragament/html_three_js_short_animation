@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Equation Builders - 3D Collaborative Math Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* UI Overlay */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* Target Display - Central */
+        .target-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #1e2a3a, #0f1724);
+            padding: 15px 35px;
+            border-radius: 60px;
+            border: 3px solid #ffd966;
+            box-shadow: 0 0 30px rgba(255, 217, 0, 0.5);
+            text-align: center;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            z-index: 20;
+        }
+        
+        .target-label {
+            font-size: 1rem;
+            color: #ffd966;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+        
+        .target-number {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #ffaa33;
+            text-shadow: 0 0 15px rgba(255,170,0,0.8);
+            line-height: 1;
+        }
+        
+        /* Player Zones */
+        .player-zone {
+            position: absolute;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 12px 18px;
+            min-width: 180px;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.3);
+            pointer-events: auto;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            z-index: 30;
+        }
+        
+        .player-zone h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .player-zone .value-display {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: #000000aa;
+            border-radius: 20px;
+            padding: 5px 10px;
+            margin: 8px 0;
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        
+        .btn-card {
+            background: #2c3e66;
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            font-family: monospace;
+            box-shadow: 0 3px 0 #0f1724;
+        }
+        
+        .btn-card:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #0f1724;
+        }
+        
+        .btn-card.operator {
+            background: #e67e22;
+            font-size: 1.5rem;
+            padding: 8px 20px;
+        }
+        
+        .btn-card.number {
+            background: #27ae60;
+        }
+        
+        .reset-btn {
+            background: #e74c3c;
+            font-size: 0.9rem;
+            padding: 6px 12px;
+        }
+        
+        /* Team Equation Panel */
+        .equation-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(15px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 2px solid #ffaa44;
+            text-align: center;
+            pointer-events: auto;
+            z-index: 30;
+            font-family: monospace;
+            min-width: 400px;
+        }
+        
+        .equation-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f0f0f0;
+            letter-spacing: 2px;
+            word-break: break-word;
+        }
+        
+        .submit-btn {
+            background: #2ecc71;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px 25px;
+            margin-top: 10px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #1f8f4c;
+        }
+        
+        .submit-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1f8f4c;
+        }
+        
+        .message-area {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            background: #1e2a36e6;
+            backdrop-filter: blur(8px);
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            color: #ffdd99;
+            border-left: 5px solid #ffaa33;
+            pointer-events: none;
+            max-width: 250px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        
+        .score-board {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #000000aa;
+            backdrop-filter: blur(5px);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-weight: bold;
+            color: gold;
+            pointer-events: none;
+        }
+        
+        /* Player zone positions */
+        .p1 { bottom: 20px; left: 20px; border-bottom: 4px solid #ff4d4d; }
+        .p2 { bottom: 20px; right: 20px; border-bottom: 4px solid #4caf50; }
+        .p3 { top: 100px; left: 20px; border-top: 4px solid #2196f3; }
+        .p4 { top: 100px; right: 20px; border-top: 4px solid #ffeb3b; }
+        
+        @media (max-width: 800px) {
+            .player-zone { padding: 8px 12px; min-width: 140px; }
+            .value-display { font-size: 1.5rem; }
+            .btn-card { font-size: 1rem; padding: 5px 10px; }
+            .equation-text { font-size: 1.3rem; }
+            .equation-panel { min-width: 280px; padding: 10px 20px; }
+            .target-number { font-size: 2.5rem; }
+        }
+        
+        .glow-success {
+            animation: successPulse 0.6s ease-out;
+        }
+        
+        @keyframes successPulse {
+            0% { text-shadow: 0 0 0px #2ecc71; }
+            50% { text-shadow: 0 0 25px #2ecc71, 0 0 10px #2ecc71; }
+            100% { text-shadow: 0 0 0px #2ecc71; }
+        }
+        
+        .instruction-tip {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: #ccc;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-container">
+        <div class="target-panel">
+            <div class="target-label">🎯 TEAM TARGET</div>
+            <div class="target-number" id="targetNumber">24</div>
+        </div>
+        
+        <div class="score-board">
+            🧠 SCORE: <span id="scoreValue">0</span> | LEVEL: <span id="levelValue">1</span>
+        </div>
+        
+        <div class="message-area" id="messageBox">
+            🤝 Work together!<br>Combine all four inputs
+        </div>
+        
+        <!-- Player 1: Bottom Left -->
+        <div class="player-zone p1" id="player1Zone">
+            <h3>🔴 PLAYER 1 · VALUE A</h3>
+            <div class="value-display" id="p1Value">0</div>
+            <div class="controls" id="p1Controls"></div>
+        </div>
+        
+        <!-- Player 2: Bottom Right -->
+        <div class="player-zone p2" id="player2Zone">
+            <h3>🟢 PLAYER 2 · OPERATOR</h3>
+            <div class="value-display" id="p2Value">+</div>
+            <div class="controls" id="p2Controls"></div>
+        </div>
+        
+        <!-- Player 3: Top Left -->
+        <div class="player-zone p3" id="player3Zone">
+            <h3>🔵 PLAYER 3 · VALUE B</h3>
+            <div class="value-display" id="p3Value">0</div>
+            <div class="controls" id="p3Controls"></div>
+        </div>
+        
+        <!-- Player 4: Top Right -->
+        <div class="player-zone p4" id="player4Zone">
+            <h3>🟡 PLAYER 4 · VALUE C</h3>
+            <div class="value-display" id="p4Value">0</div>
+            <div class="controls" id="p4Controls"></div>
+        </div>
+        
+        <div class="equation-panel">
+            <div>📐 TEAM EQUATION</div>
+            <div class="equation-text" id="equationPreview">A ? B ? C = ?</div>
+            <button class="submit-btn" id="submitEquation">✨ SUBMIT EQUATION ✨</button>
+        </div>
+        <div class="instruction-tip">
+            💡 Each player controls a piece! Combine A, Operator, B, and C to hit the TARGET.
+        </div>
+    </div>
+
+    <!-- Import Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        
+        // ---------- GAME STATE ----------
+        let currentTarget = 24;
+        let currentScore = 0;
+        let currentLevel = 1;
+        
+        // Player inputs
+        let player1Value = 4;   // A
+        let player2Value = '+'; // Operator
+        let player3Value = 6;   // B
+        let player4Value = 2;   // C
+        
+        // Available choices per player
+        const numbersList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
+        const operatorsList = ['+', '-', '×', '÷'];
+        
+        // Helper: evaluate expression safely with custom operators
+        function evaluateEquation(a, op, b, c) {
+            let step1;
+            // Handle first operation (a op b)
+            if (op === '+') step1 = a + b;
+            else if (op === '-') step1 = a - b;
+            else if (op === '×') step1 = a * b;
+            else if (op === '÷') {
+                if (b === 0) return null;
+                step1 = a / b;
+                if (!Number.isInteger(step1)) return null; // require integer results for nice gameplay
+            }
+            // Then combine with c: step1 + c ? Actually we design as (A op B) op C? For clarity, we do left-associative: (A op B) then result op C? 
+            // But game simplicity: equation is "A [op] B [op] C" but we need to decide second operator? Actually we want collaborative: Player2 chooses primary op, but we need consistent two operations?
+            // Better: Equation: A  (operator)  B   then   combine with C using same operator? That might be confusing.
+            // Let's define: The team equation is "A  (operator)  B  (operator)  C" and second operator is same as first to keep collaborative simple? No, we want real arithmetic.
+            // Improved: Let's use format: A (op) B = intermediate, then intermediate (op) C = final.
+            // But we need consistent second operator? I'll use same operator for both steps, making it fair: A op B op C.
+            let final;
+            if (op === '+') final = a + b + c;
+            else if (op === '-') final = a - b - c;
+            else if (op === '×') final = a * b * c;
+            else if (op === '÷') {
+                if (b === 0 || (a / b) === 0) return null;
+                let mid = a / b;
+                if (!Number.isInteger(mid)) return null;
+                if (c === 0) return null;
+                let finalDiv = mid / c;
+                if (!Number.isInteger(finalDiv)) return null;
+                final = finalDiv;
+            }
+            return final;
+        }
+        
+        // Update equation preview and check if valid
+        function updateEquationPreview() {
+            const previewElem = document.getElementById('equationPreview');
+            const opSymbol = player2Value;
+            previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ?`;
+            const result = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
+            if (result !== null) {
+                previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ${result}`;
+            } else {
+                previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ❌ invalid`;
+            }
+            return result;
+        }
+        
+        // Submit attempt
+        function submitEquation() {
+            const result = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
+            if (result === null) {
+                showMessage("❌ Invalid equation! Division must result in whole numbers. Try different numbers/operator.", 2000);
+                return;
+            }
+            
+            if (result === currentTarget) {
+                // SUCCESS!
+                currentScore += 10 + currentLevel * 2;
+                document.getElementById('scoreValue').innerText = currentScore;
+                showMessage("🎉 PERFECT! 🎉 Teamwork wins! +" + (10 + currentLevel * 2) + " points", 2500);
+                
+                // Visual 3D effect: flash central sphere
+                if (window.successEffect) window.successEffect();
+                
+                // Next level: increase target, randomize numbers/operators a bit, but keep players engaged
+                currentLevel++;
+                document.getElementById('levelValue').innerText = currentLevel;
+                generateNewTarget();
+                
+                // After success, reset players to fresh but keep collaboration fun: randomize but allow control
+                resetPlayersToNewChoices();
+                updateAllPlayerDisplays();
+                updateEquationPreview();
+                animatePlatforms();
+            } else {
+                showMessage(`❌ Not quite! Equation = ${result}, Target = ${currentTarget}. Keep collaborating!`, 1800);
+                // Shake UI feedback
+                const eqPanel = document.querySelector('.equation-panel');
+                eqPanel.style.transform = 'translateX(-50%) translateX(5px)';
+                setTimeout(() => eqPanel.style.transform = 'translateX(-50%)', 100);
+            }
+        }
+        
+        function generateNewTarget() {
+            // Generate interesting targets from 12 to 60 based on level
+            const possibleTargets = [12, 16, 18, 20, 24, 27, 30, 32, 36, 40, 42, 45, 48, 49, 54, 56, 60];
+            let idx = (currentLevel - 1) % possibleTargets.length;
+            currentTarget = possibleTargets[idx];
+            if (currentLevel > 8) {
+                currentTarget = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+            }
+            document.getElementById('targetNumber').innerText = currentTarget;
+            showMessage(`🎯 New Target: ${currentTarget} | Work together!`, 2000);
+        }
+        
+        function resetPlayersToNewChoices() {
+            // Give players new but not impossible options, retain control
+            // Player1 new number (A)
+            player1Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+            // Player3 new number (B)
+            player3Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+            // Player4 new number (C)
+            player4Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+            // Operator can stay or change for variety but keep fun
+            // Optionally cycle operator to not be stuck
+        }
+        
+        function showMessage(msg, duration) {
+            const msgBox = document.getElementById('messageBox');
+            msgBox.innerHTML = msg;
+            msgBox.style.opacity = '1';
+            clearTimeout(window.msgTimeout);
+            window.msgTimeout = setTimeout(() => {
+                msgBox.innerHTML = "🤝 Keep communicating! Combine all pieces.";
+            }, duration);
+        }
+        
+        function updateAllPlayerDisplays() {
+            document.getElementById('p1Value').innerText = player1Value;
+            document.getElementById('p2Value').innerText = player2Value;
+            document.getElementById('p3Value').innerText = player3Value;
+            document.getElementById('p4Value').innerText = player4Value;
+            updateEquationPreview();
+        }
+        
+        // Generate UI buttons dynamically per player
+        function buildPlayerControls() {
+            // Player 1 - numbers
+            const p1Div = document.getElementById('p1Controls');
+            p1Div.innerHTML = '';
+            numbersList.slice(0, 8).forEach(num => {
+                const btn = document.createElement('button');
+                btn.innerText = num;
+                btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => {
+                    player1Value = num;
+                    updateAllPlayerDisplays();
+                    showMessage(`🔴 Player 1 set A = ${num}`, 800);
+                });
+                p1Div.appendChild(btn);
+            });
+            
+            // Player 3 - numbers
+            const p3Div = document.getElementById('p3Controls');
+            p3Div.innerHTML = '';
+            numbersList.slice(0, 8).forEach(num => {
+                const btn = document.createElement('button');
+                btn.innerText = num;
+                btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => {
+                    player3Value = num;
+                    updateAllPlayerDisplays();
+                    showMessage(`🔵 Player 3 set B = ${num}`, 800);
+                });
+                p3Div.appendChild(btn);
+            });
+            
+            // Player 4 - numbers
+            const p4Div = document.getElementById('p4Controls');
+            p4Div.innerHTML = '';
+            numbersList.slice(0, 8).forEach(num => {
+                const btn = document.createElement('button');
+                btn.innerText = num;
+                btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => {
+                    player4Value = num;
+                    updateAllPlayerDisplays();
+                    showMessage(`🟡 Player 4 set C = ${num}`, 800);
+                });
+                p4Div.appendChild(btn);
+            });
+            
+            // Player 2 - operators
+            const p2Div = document.getElementById('p2Controls');
+            p2Div.innerHTML = '';
+            operatorsList.forEach(op => {
+                const btn = document.createElement('button');
+                btn.innerText = op;
+                btn.classList.add('btn-card', 'operator');
+                btn.addEventListener('click', () => {
+                    player2Value = op;
+                    updateAllPlayerDisplays();
+                    showMessage(`🟢 Operator set to ${op}`, 800);
+                });
+                p2Div.appendChild(btn);
+            });
+            
+            // Add reset individual option? Not needed but extra fun: reset all
+            const resetAllBtn = document.createElement('button');
+            resetAllBtn.innerText = '🔄 RESET ALL';
+            resetAllBtn.classList.add('btn-card', 'reset-btn');
+            resetAllBtn.style.marginTop = '8px';
+            resetAllBtn.addEventListener('click', () => {
+                player1Value = 4;
+                player2Value = '+';
+                player3Value = 6;
+                player4Value = 2;
+                updateAllPlayerDisplays();
+                showMessage("🔄 Team reset! Build a new equation together.", 1200);
+            });
+            p1Div.appendChild(resetAllBtn.cloneNode(true));
+            p3Div.appendChild(resetAllBtn.cloneNode(true));
+            p4Div.appendChild(resetAllBtn.cloneNode(true));
+        }
+        
+        // 3D Scene Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b1a);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 6, 12);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        // Controls with auto-rotate optional but not interfering
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.target.set(0, 1, 0);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+        mainLight.position.set(5, 10, 7);
+        mainLight.castShadow = true;
+        mainLight.receiveShadow = false;
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0x4466cc, 0.3);
+        fillLight.position.set(-3, 4, 4);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0xffaa66, 0.4);
+        backLight.position.set(0, 3, -5);
+        scene.add(backLight);
+        
+        // Central glowing platform
+        const platformMat = new THREE.MeshStandardMaterial({ color: 0x2c3e66, roughness: 0.3, metalness: 0.7, emissive: 0x111133 });
+        const centralBase = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 0.3, 32), platformMat);
+        centralBase.position.y = -0.5;
+        centralBase.receiveShadow = true;
+        scene.add(centralBase);
+        
+        // Floating central core (target visual)
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0x442200, emissiveIntensity: 0.6 });
+        const coreSphere = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), coreMat);
+        coreSphere.position.y = 0.3;
+        coreSphere.castShadow = true;
+        scene.add(coreSphere);
+        
+        // Rotating rings
+        const ringGeo = new THREE.TorusGeometry(1.4, 0.08, 64, 200);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x552200 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.2;
+        scene.add(ring);
+        
+        const ring2 = new THREE.Mesh(ringGeo, ringMat);
+        ring2.rotation.z = Math.PI / 3;
+        ring2.rotation.x = Math.PI / 3;
+        ring2.position.y = 0.5;
+        scene.add(ring2);
+        
+        // Player colored floating orbs around central
+        const colors = [0xff4d4d, 0x4caf50, 0x2196f3, 0xffeb3b];
+        const positions = [[-2.2, 0, -2.2], [2.2, 0, -2.2], [-2.2, 0, 2.2], [2.2, 0, 2.2]];
+        const orbs = [];
+        positions.forEach((pos, idx) => {
+            const orbMat = new THREE.MeshStandardMaterial({ color: colors[idx], emissive: 0x331100, emissiveIntensity: 0.4 });
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), orbMat);
+            orb.position.set(pos[0], pos[1] + 0.2, pos[2]);
+            orb.castShadow = true;
+            scene.add(orb);
+            orbs.push(orb);
+        });
+        
+        // Floating particles
+        const particleCount = 400;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i*3] = (Math.random() - 0.5) * 30;
+            particlePositions[i*3+1] = (Math.random() - 0.5) * 8 + 1;
+            particlePositions[i*3+2] = (Math.random() - 0.5) * 20 - 5;
+        }
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.08, transparent: true, opacity: 0.5 });
+        const particles = new THREE.Points(particlesGeometry, particleMat);
+        scene.add(particles);
+        
+        // Animation & success effect
+        let time = 0;
+        let successFlash = false;
+        let flashIntensity = 0;
+        
+        window.successEffect = () => {
+            successFlash = true;
+            flashIntensity = 1.0;
+            coreMat.emissiveIntensity = 1.2;
+            setTimeout(() => { coreMat.emissiveIntensity = 0.6; }, 400);
+            // animate orbs
+            orbs.forEach(orb => {
+                orb.scale.set(1.4, 1.4, 1.4);
+                setTimeout(() => orb.scale.set(1, 1, 1), 300);
+            });
+            const eqDiv = document.querySelector('.equation-panel');
+            eqDiv.classList.add('glow-success');
+            setTimeout(() => eqDiv.classList.remove('glow-success'), 600);
+        };
+        
+        function animatePlatforms() {
+            // just visual bounce
+            coreSphere.position.y = 0.3 + Math.sin(Date.now() * 0.01) * 0.05;
+        }
+        
+        // Animate loop
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.012;
+            ring.rotation.z += 0.008;
+            ring2.rotation.x += 0.005;
+            ring2.rotation.y += 0.003;
+            coreSphere.position.y = 0.35 + Math.sin(time * 2) * 0.05;
+            particles.rotation.y += 0.002;
+            particles.rotation.x += 0.001;
+            
+            if (successFlash) {
+                const intensity = flashIntensity * 0.95;
+                flashIntensity *= 0.92;
+                if (flashIntensity < 0.05) successFlash = false;
+                const lightColor = 0xffaa66;
+                backLight.intensity = 0.8 + flashIntensity * 1.2;
+            } else {
+                backLight.intensity = 0.4;
+            }
+            
+            controls.update(); // update orbit if user interacts
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // UI Event binding
+        document.getElementById('submitEquation').addEventListener('click', submitEquation);
+        
+        // Initialize game
+        function initGame() {
+            buildPlayerControls();
+            player1Value = 8;
+            player3Value = 3;
+            player4Value = 1;
+            player2Value = '+';
+            currentTarget = 24;
+            currentScore = 0;
+            currentLevel = 1;
+            document.getElementById('targetNumber').innerText = currentTarget;
+            document.getElementById('scoreValue').innerText = currentScore;
+            document.getElementById('levelValue').innerText = currentLevel;
+            updateAllPlayerDisplays();
+            showMessage("🌟 Team up! Each player controls a number/operator. Build equation = Target!", 3000);
+        }
+        
+        initGame();
+        
+        // Responsive resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Add small interaction hint on player zones
+        console.log("3D Collaborative Equation Builders ready! Touch/click friendly.");
+    </script>
+</body>
+</html>
