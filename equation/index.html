@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Equation Builders - 3D Collaborative Math Game</title>
+    <title>Equation Builders - 3D Collaborative Math | Smart Hints + Adjustable Heights</title>
     <style>
         body {
             margin: 0;
@@ -11,7 +11,6 @@
             font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        /* UI Overlay */
         .ui-container {
             position: absolute;
             top: 0;
@@ -22,14 +21,13 @@
             z-index: 10;
         }
         
-        /* Target Display - Central */
         .target-panel {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #1e2a3a, #0f1724);
-            padding: 15px 35px;
+            padding: 12px 30px;
             border-radius: 60px;
             border: 3px solid #ffd966;
             box-shadow: 0 0 30px rgba(255, 217, 0, 0.5);
@@ -39,41 +37,33 @@
             z-index: 20;
         }
         
-        .target-label {
-            font-size: 1rem;
-            color: #ffd966;
-            letter-spacing: 2px;
-            font-weight: 600;
-        }
-        
         .target-number {
-            font-size: 4rem;
+            font-size: 3.5rem;
             font-weight: 800;
             color: #ffaa33;
             text-shadow: 0 0 15px rgba(255,170,0,0.8);
             line-height: 1;
         }
         
-        /* Player Zones */
         .player-zone {
             position: absolute;
-            background: rgba(0,0,0,0.65);
+            background: rgba(0,0,0,0.85);
             backdrop-filter: blur(12px);
-            border-radius: 20px;
+            border-radius: 24px;
             padding: 12px 18px;
-            min-width: 180px;
+            min-width: 200px;
             text-align: center;
-            border: 2px solid rgba(255,255,255,0.3);
             pointer-events: auto;
-            transition: all 0.2s ease;
+            transition: top 0.25s ease, bottom 0.25s ease;
             font-weight: bold;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
             z-index: 30;
+            border: 2px solid rgba(255,255,255,0.25);
         }
         
         .player-zone h3 {
             margin: 0 0 8px 0;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -81,107 +71,191 @@
         }
         
         .player-zone .value-display {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 800;
             background: #000000aa;
             border-radius: 20px;
-            padding: 5px 10px;
-            margin: 8px 0;
+            padding: 4px 10px;
+            margin: 6px 0;
             font-family: monospace;
-            letter-spacing: 2px;
         }
         
         .controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
             justify-content: center;
-            margin-top: 10px;
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        
+        .controls::-webkit-scrollbar {
+            width: 5px;
         }
         
         .btn-card {
             background: #2c3e66;
             border: none;
             color: white;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: bold;
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 40px;
             cursor: pointer;
-            transition: transform 0.1s, background 0.2s;
+            transition: transform 0.05s, background 0.2s;
             font-family: monospace;
-            box-shadow: 0 3px 0 #0f1724;
+            box-shadow: 0 2px 0 #0f1724;
+            touch-action: manipulation;
         }
         
         .btn-card:active {
             transform: translateY(2px);
-            box-shadow: 0 1px 0 #0f1724;
         }
         
         .btn-card.operator {
             background: #e67e22;
-            font-size: 1.5rem;
-            padding: 8px 20px;
+            font-size: 1.3rem;
         }
         
         .btn-card.number {
             background: #27ae60;
         }
         
-        .reset-btn {
-            background: #e74c3c;
-            font-size: 0.9rem;
-            padding: 6px 12px;
+        .height-presets {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.25);
         }
         
-        /* Team Equation Panel */
-        .equation-panel {
+        .preset-btn {
+            background: #34495e;
+            border: none;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.1s;
+            touch-action: manipulation;
+        }
+        
+        .preset-btn.active {
+            background: #f39c12;
+            box-shadow: 0 0 8px #f39c12;
+        }
+        
+        .player-zone.p1 { bottom: 20px; left: 20px; border-left: 5px solid #ff4d4d; }
+        .player-zone.p2 { bottom: 20px; right: 20px; border-right: 5px solid #4caf50; }
+        .player-zone.p3 { top: 100px; left: 20px; border-left: 5px solid #2196f3; }
+        .player-zone.p4 { top: 100px; right: 20px; border-right: 5px solid #ffeb3b; }
+        
+        .shared-controls {
             position: absolute;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             backdrop-filter: blur(15px);
-            padding: 15px 30px;
-            border-radius: 50px;
-            border: 2px solid #ffaa44;
-            text-align: center;
+            padding: 12px 25px;
+            border-radius: 60px;
+            display: flex;
+            gap: 20px;
             pointer-events: auto;
-            z-index: 30;
-            font-family: monospace;
-            min-width: 400px;
+            z-index: 35;
+            border: 2px solid #ffaa66;
+            transition: bottom 0.25s ease;
         }
         
-        .equation-text {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #f0f0f0;
-            letter-spacing: 2px;
-            word-break: break-word;
-        }
-        
-        .submit-btn {
-            background: #2ecc71;
-            border: none;
-            color: white;
+        .action-btn {
             font-size: 1.2rem;
             font-weight: bold;
-            padding: 10px 25px;
-            margin-top: 10px;
-            border-radius: 40px;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 50px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.1s, filter 0.2s;
+            touch-action: manipulation;
+            font-family: inherit;
+        }
+        
+        .submit-main {
+            background: #2ecc71;
+            color: white;
             box-shadow: 0 4px 0 #1f8f4c;
         }
         
-        .submit-btn:active {
+        .hint-btn {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 4px 0 #1f618d;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-btn:active {
             transform: translateY(2px);
-            box-shadow: 0 1px 0 #1f8f4c;
+            box-shadow: 0 1px 0;
+        }
+        
+        .shared-height-control {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 15px;
+            border-radius: 40px;
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+            z-index: 35;
+            font-size: 0.8rem;
+        }
+        
+        .shared-preset {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .shared-preset.active {
+            background: #f39c12;
+        }
+        
+        .equation-preview {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(12px);
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-family: monospace;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffdd99;
+            border: 2px solid #ffaa44;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 25;
         }
         
         .message-area {
             position: absolute;
-            top: 120px;
+            top: 180px;
             right: 20px;
             background: #1e2a36e6;
             backdrop-filter: blur(8px);
@@ -191,9 +265,10 @@
             color: #ffdd99;
             border-left: 5px solid #ffaa33;
             pointer-events: none;
-            max-width: 250px;
-            text-align: center;
+            max-width: 300px;
             font-size: 0.9rem;
+            z-index: 25;
+            transition: all 0.3s ease;
         }
         
         .score-board {
@@ -202,57 +277,62 @@
             left: 20px;
             background: #000000aa;
             backdrop-filter: blur(5px);
-            padding: 8px 18px;
+            padding: 6px 16px;
             border-radius: 30px;
             font-weight: bold;
             color: gold;
             pointer-events: none;
+            z-index: 25;
         }
         
-        /* Player zone positions */
-        .p1 { bottom: 20px; left: 20px; border-bottom: 4px solid #ff4d4d; }
-        .p2 { bottom: 20px; right: 20px; border-bottom: 4px solid #4caf50; }
-        .p3 { top: 100px; left: 20px; border-top: 4px solid #2196f3; }
-        .p4 { top: 100px; right: 20px; border-top: 4px solid #ffeb3b; }
+        .hint-animation {
+            animation: hintPulse 0.5s ease-in-out 3;
+        }
         
-        @media (max-width: 800px) {
-            .player-zone { padding: 8px 12px; min-width: 140px; }
-            .value-display { font-size: 1.5rem; }
-            .btn-card { font-size: 1rem; padding: 5px 10px; }
-            .equation-text { font-size: 1.3rem; }
-            .equation-panel { min-width: 280px; padding: 10px 20px; }
-            .target-number { font-size: 2.5rem; }
+        @keyframes hintPulse {
+            0%, 100% { transform: scale(1); background: #3498db; }
+            50% { transform: scale(1.05); background: #f1c40f; box-shadow: 0 0 20px #f1c40f; }
         }
         
         .glow-success {
-            animation: successPulse 0.6s ease-out;
+            animation: successPulse 0.5s ease-out;
         }
         
         @keyframes successPulse {
-            0% { text-shadow: 0 0 0px #2ecc71; }
-            50% { text-shadow: 0 0 25px #2ecc71, 0 0 10px #2ecc71; }
-            100% { text-shadow: 0 0 0px #2ecc71; }
+            0% { text-shadow: 0 0 0px #2ecc71; border-color: #ffaa44; }
+            50% { text-shadow: 0 0 20px #2ecc71; border-color: #2ecc71; }
+            100% { text-shadow: 0 0 0px #2ecc71; border-color: #ffaa44; }
         }
         
-        .instruction-tip {
+        @media (max-width: 900px) {
+            .player-zone { padding: 8px 12px; min-width: 170px; }
+            .btn-card { font-size: 1rem; padding: 5px 10px; }
+            .equation-preview { font-size: 1rem; white-space: normal; min-width: 260px; text-align: center; top: 95px; }
+            .shared-controls { padding: 8px 18px; gap: 12px; }
+            .action-btn { padding: 8px 18px; font-size: 1rem; }
+            .message-area { top: 170px; right: 10px; max-width: 240px; font-size: 0.8rem; }
+        }
+        
+        .hint-badge {
             position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            font-size: 0.75rem;
-            padding: 5px 12px;
-            border-radius: 20px;
-            color: #ccc;
-            pointer-events: none;
-            white-space: nowrap;
+            top: -8px;
+            right: -8px;
+            background: #f39c12;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="ui-container">
         <div class="target-panel">
-            <div class="target-label">🎯 TEAM TARGET</div>
+            <div>🎯 TEAM TARGET</div>
             <div class="target-number" id="targetNumber">24</div>
         </div>
         
@@ -261,48 +341,70 @@
         </div>
         
         <div class="message-area" id="messageBox">
-            🤝 Work together!<br>Combine all four inputs
+            🤝 Each student: choose TOP/MID/BOTTOM for your panel!<br>💡 Click HINT for smart suggestions!
         </div>
         
-        <!-- Player 1: Bottom Left -->
+        <!-- Player Zones -->
         <div class="player-zone p1" id="player1Zone">
             <h3>🔴 PLAYER 1 · VALUE A</h3>
             <div class="value-display" id="p1Value">0</div>
             <div class="controls" id="p1Controls"></div>
+            <div class="height-presets">
+                <button class="preset-btn" data-player="1" data-preset="top">TOP</button>
+                <button class="preset-btn" data-player="1" data-preset="middle">MID</button>
+                <button class="preset-btn" data-player="1" data-preset="bottom">BOTTOM</button>
+            </div>
         </div>
         
-        <!-- Player 2: Bottom Right -->
         <div class="player-zone p2" id="player2Zone">
             <h3>🟢 PLAYER 2 · OPERATOR</h3>
             <div class="value-display" id="p2Value">+</div>
             <div class="controls" id="p2Controls"></div>
+            <div class="height-presets">
+                <button class="preset-btn" data-player="2" data-preset="top">TOP</button>
+                <button class="preset-btn" data-player="2" data-preset="middle">MID</button>
+                <button class="preset-btn" data-player="2" data-preset="bottom">BOTTOM</button>
+            </div>
         </div>
         
-        <!-- Player 3: Top Left -->
         <div class="player-zone p3" id="player3Zone">
             <h3>🔵 PLAYER 3 · VALUE B</h3>
             <div class="value-display" id="p3Value">0</div>
             <div class="controls" id="p3Controls"></div>
+            <div class="height-presets">
+                <button class="preset-btn" data-player="3" data-preset="top">TOP</button>
+                <button class="preset-btn" data-player="3" data-preset="middle">MID</button>
+                <button class="preset-btn" data-player="3" data-preset="bottom">BOTTOM</button>
+            </div>
         </div>
         
-        <!-- Player 4: Top Right -->
         <div class="player-zone p4" id="player4Zone">
             <h3>🟡 PLAYER 4 · VALUE C</h3>
             <div class="value-display" id="p4Value">0</div>
             <div class="controls" id="p4Controls"></div>
+            <div class="height-presets">
+                <button class="preset-btn" data-player="4" data-preset="top">TOP</button>
+                <button class="preset-btn" data-player="4" data-preset="middle">MID</button>
+                <button class="preset-btn" data-player="4" data-preset="bottom">BOTTOM</button>
+            </div>
         </div>
         
-        <div class="equation-panel">
-            <div>📐 TEAM EQUATION</div>
-            <div class="equation-text" id="equationPreview">A ? B ? C = ?</div>
-            <button class="submit-btn" id="submitEquation">✨ SUBMIT EQUATION ✨</button>
+        <!-- Shared Controls -->
+        <div class="shared-controls" id="sharedControls">
+            <button class="action-btn submit-main" id="submitEquationBtn">✨ SUBMIT ✨</button>
+            <button class="action-btn hint-btn" id="hintButton">💡 HINT</button>
         </div>
-        <div class="instruction-tip">
-            💡 Each player controls a piece! Combine A, Operator, B, and C to hit the TARGET.
+        <div class="shared-height-control" id="sharedHeightControl">
+            <span style="color:#ddd;">📏 Submit/Hint Height:</span>
+            <button class="shared-preset" data-shared="top">TOP</button>
+            <button class="shared-preset" data-shared="middle">MID</button>
+            <button class="shared-preset" data-shared="bottom">BOTTOM</button>
         </div>
+        
+        <div class="equation-preview" id="equationPreview">A ? B ? C = ?</div>
     </div>
 
-    <!-- Import Three.js core and add-ons -->
+    <!-- Import Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -315,47 +417,32 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
         
-        // ---------- GAME STATE ----------
+        // Game State
         let currentTarget = 24;
         let currentScore = 0;
         let currentLevel = 1;
         
-        // Player inputs
-        let player1Value = 4;   // A
-        let player2Value = '+'; // Operator
-        let player3Value = 6;   // B
-        let player4Value = 2;   // C
+        let player1Value = 8;
+        let player2Value = '+';
+        let player3Value = 3;
+        let player4Value = 1;
         
-        // Available choices per player
         const numbersList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
         const operatorsList = ['+', '-', '×', '÷'];
         
-        // Helper: evaluate expression safely with custom operators
+        // Height presets
+        let playerPresetState = { 1: 'bottom', 2: 'bottom', 3: 'middle', 4: 'middle' };
+        let sharedHeightPreset = 'middle';
+        const sharedPresetValues = { top: 150, middle: 70, bottom: 20 };
+        
         function evaluateEquation(a, op, b, c) {
-            let step1;
-            // Handle first operation (a op b)
-            if (op === '+') step1 = a + b;
-            else if (op === '-') step1 = a - b;
-            else if (op === '×') step1 = a * b;
-            else if (op === '÷') {
-                if (b === 0) return null;
-                step1 = a / b;
-                if (!Number.isInteger(step1)) return null; // require integer results for nice gameplay
-            }
-            // Then combine with c: step1 + c ? Actually we design as (A op B) op C? For clarity, we do left-associative: (A op B) then result op C? 
-            // But game simplicity: equation is "A [op] B [op] C" but we need to decide second operator? Actually we want collaborative: Player2 chooses primary op, but we need consistent two operations?
-            // Better: Equation: A  (operator)  B   then   combine with C using same operator? That might be confusing.
-            // Let's define: The team equation is "A  (operator)  B  (operator)  C" and second operator is same as first to keep collaborative simple? No, we want real arithmetic.
-            // Improved: Let's use format: A (op) B = intermediate, then intermediate (op) C = final.
-            // But we need consistent second operator? I'll use same operator for both steps, making it fair: A op B op C.
             let final;
             if (op === '+') final = a + b + c;
             else if (op === '-') final = a - b - c;
             else if (op === '×') final = a * b * c;
             else if (op === '÷') {
-                if (b === 0 || (a / b) === 0) return null;
+                if (b === 0) return null;
                 let mid = a / b;
                 if (!Number.isInteger(mid)) return null;
                 if (c === 0) return null;
@@ -366,356 +453,392 @@
             return final;
         }
         
-        // Update equation preview and check if valid
-        function updateEquationPreview() {
-            const previewElem = document.getElementById('equationPreview');
-            const opSymbol = player2Value;
-            previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ?`;
-            const result = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
-            if (result !== null) {
-                previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ${result}`;
-            } else {
-                previewElem.innerHTML = `${player1Value} ${opSymbol} ${player3Value} ${opSymbol} ${player4Value} = ❌ invalid`;
+        // Enhanced Hint System
+        function showSmartHint() {
+            const target = currentTarget;
+            const currentValues = {
+                A: player1Value,
+                B: player3Value,
+                C: player4Value,
+                op: player2Value
+            };
+            
+            let currentResult = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
+            
+            // Find all possible solutions
+            let allSolutions = [];
+            
+            // Try all combinations of numbers and operators
+            for (let a of numbersList) {
+                for (let b of numbersList) {
+                    for (let c of numbersList) {
+                        for (let op of operatorsList) {
+                            let result = evaluateEquation(a, op, b, c);
+                            if (result === target && result !== null) {
+                                allSolutions.push({ A: a, B: b, C: c, op: op, result: result });
+                            }
+                        }
+                    }
+                }
             }
-            return result;
+            
+            // Remove duplicates and limit
+            let uniqueSolutions = allSolutions.slice(0, 8);
+            
+            // Generate hint based on current state
+            let hintMessage = "";
+            let hintType = "";
+            
+            if (currentResult === target) {
+                hintMessage = "🎉 You've already solved it! Click SUBMIT to win! 🎉";
+                hintType = "success";
+            } 
+            else if (uniqueSolutions.length > 0) {
+                // Provide specific collaborative suggestions
+                let suggestion = uniqueSolutions[Math.floor(Math.random() * uniqueSolutions.length)];
+                hintMessage = `💡 **TEAM HINT** 💡\n\n`;
+                hintMessage += `Try to make: ${suggestion.A} ${suggestion.op} ${suggestion.B} ${suggestion.op} ${suggestion.C} = ${target}\n\n`;
+                hintMessage += `📢 Assign roles:\n`;
+                hintMessage += `🔴 Player 1: Set A = ${suggestion.A}\n`;
+                hintMessage += `🟢 Player 2: Set operator = ${suggestion.op}\n`;
+                hintMessage += `🔵 Player 3: Set B = ${suggestion.B}\n`;
+                hintMessage += `🟡 Player 4: Set C = ${suggestion.C}\n\n`;
+                hintMessage += `🤝 Work together to change your values!`;
+            } 
+            else {
+                // Provide strategic hint when no direct solution exists (unlikely but safe)
+                hintMessage = `💡 **COLLABORATION HINT** 💡\n\n`;
+                hintMessage += `Target is ${target}. Current equation: ${player1Value} ${player2Value} ${player3Value} ${player2Value} ${player4Value} = ${currentResult || 'invalid'}\n\n`;
+                
+                // Suggest specific changes
+                let closestDiff = Infinity;
+                let bestSuggestion = null;
+                
+                for (let op of operatorsList) {
+                    let result = evaluateEquation(player1Value, op, player3Value, player4Value);
+                    if (result !== null && Math.abs(result - target) < closestDiff) {
+                        closestDiff = Math.abs(result - target);
+                        bestSuggestion = { op: op, result: result };
+                    }
+                }
+                
+                if (bestSuggestion && bestSuggestion.result !== null) {
+                    hintMessage += `🔧 Try changing the operator to ${bestSuggestion.op} to get ${bestSuggestion.result} (difference: ${Math.abs(bestSuggestion.result - target)})\n\n`;
+                }
+                
+                hintMessage += `💬 Discuss as a team: Should we adjust numbers or try a different operator?\n`;
+                hintMessage += `🎯 Remember: ${target} can be reached by multiplication, addition, or combinations!`;
+            }
+            
+            // Display hint in message area with animation
+            const msgBox = document.getElementById('messageBox');
+            msgBox.innerHTML = hintMessage.replace(/\n/g, '<br>');
+            msgBox.style.background = "rgba(0,0,0,0.9)";
+            msgBox.style.borderLeft = "5px solid #f39c12";
+            
+            // Animate hint button
+            const hintBtn = document.getElementById('hintButton');
+            hintBtn.classList.add('hint-animation');
+            setTimeout(() => hintBtn.classList.remove('hint-animation'), 1500);
+            
+            // Flash the target panel for emphasis
+            const targetPanel = document.querySelector('.target-panel');
+            targetPanel.style.transform = 'translateX(-50%) scale(1.05)';
+            setTimeout(() => targetPanel.style.transform = 'translateX(-50%) scale(1)', 300);
+            
+            // Clear message after 8 seconds but keep visible longer for reading
+            clearTimeout(window.hintTimeout);
+            window.hintTimeout = setTimeout(() => {
+                if (document.getElementById('messageBox').innerHTML.includes("TEAM HINT")) {
+                    document.getElementById('messageBox').innerHTML = "🤝 Keep collaborating! Click HINT again for more suggestions!";
+                    document.getElementById('messageBox').style.background = "#1e2a36e6";
+                    document.getElementById('messageBox').style.borderLeft = "5px solid #ffaa33";
+                }
+            }, 8000);
         }
         
-        // Submit attempt
+        function updateEquationPreviewText() {
+            const previewDiv = document.getElementById('equationPreview');
+            const result = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
+            if (result !== null) {
+                previewDiv.innerHTML = `${player1Value} ${player2Value} ${player3Value} ${player2Value} ${player4Value} = ${result}`;
+            } else {
+                previewDiv.innerHTML = `${player1Value} ${player2Value} ${player3Value} ${player2Value} ${player4Value} = ❌ invalid (division issue)`;
+            }
+        }
+        
+        function updateAllDisplays() {
+            document.getElementById('p1Value').innerText = player1Value;
+            document.getElementById('p2Value').innerText = player2Value;
+            document.getElementById('p3Value').innerText = player3Value;
+            document.getElementById('p4Value').innerText = player4Value;
+            updateEquationPreviewText();
+        }
+        
+        function showMessage(msg, duration = 2500) {
+            const msgBox = document.getElementById('messageBox');
+            msgBox.innerHTML = msg;
+            msgBox.style.background = "#1e2a36e6";
+            msgBox.style.borderLeft = "5px solid #ffaa33";
+            clearTimeout(window.msgTimeout);
+            window.msgTimeout = setTimeout(() => {
+                if (!msgBox.innerHTML.includes("TEAM HINT")) {
+                    msgBox.innerHTML = "🤝 Keep collaborating! Use HINT button for smart suggestions!";
+                }
+            }, duration);
+        }
+        
+        function setPlayerHeight(playerId, preset) {
+            const zone = document.getElementById(`player${playerId}Zone`);
+            if (!zone) return;
+            const isBottomPlayer = (playerId === 1 || playerId === 2);
+            if (isBottomPlayer) {
+                let bottomVal = preset === 'top' ? 220 : (preset === 'middle' ? 110 : 15);
+                zone.style.bottom = `${bottomVal}px`;
+                zone.style.top = 'auto';
+            } else {
+                let topVal = preset === 'top' ? 60 : (preset === 'middle' ? 210 : 300);
+                zone.style.top = `${topVal}px`;
+                zone.style.bottom = 'auto';
+            }
+            playerPresetState[playerId] = preset;
+            document.querySelectorAll(`.preset-btn[data-player="${playerId}"]`).forEach(btn => {
+                if (btn.dataset.preset === preset) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+        
+        function setSharedControlsHeight(preset) {
+            const controlsDiv = document.getElementById('sharedControls');
+            const bottomVal = sharedPresetValues[preset];
+            if (bottomVal !== undefined) {
+                controlsDiv.style.bottom = `${bottomVal}px`;
+                sharedHeightPreset = preset;
+            }
+            document.querySelectorAll('.shared-preset').forEach(btn => {
+                if (btn.dataset.shared === preset) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+        
         function submitEquation() {
             const result = evaluateEquation(player1Value, player2Value, player3Value, player4Value);
             if (result === null) {
                 showMessage("❌ Invalid equation! Division must result in whole numbers. Try different numbers/operator.", 2000);
                 return;
             }
-            
             if (result === currentTarget) {
-                // SUCCESS!
                 currentScore += 10 + currentLevel * 2;
                 document.getElementById('scoreValue').innerText = currentScore;
-                showMessage("🎉 PERFECT! 🎉 Teamwork wins! +" + (10 + currentLevel * 2) + " points", 2500);
-                
-                // Visual 3D effect: flash central sphere
-                if (window.successEffect) window.successEffect();
-                
-                // Next level: increase target, randomize numbers/operators a bit, but keep players engaged
+                showMessage("🎉 PERFECT! Amazing teamwork! +" + (10 + currentLevel * 2) + " points 🎉", 3000);
+                triggerSuccessEffect();
                 currentLevel++;
                 document.getElementById('levelValue').innerText = currentLevel;
                 generateNewTarget();
-                
-                // After success, reset players to fresh but keep collaboration fun: randomize but allow control
-                resetPlayersToNewChoices();
-                updateAllPlayerDisplays();
-                updateEquationPreview();
-                animatePlatforms();
+                // Randomize new numbers for next round
+                player1Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+                player3Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+                player4Value = numbersList[Math.floor(Math.random() * numbersList.length)];
+                if (Math.random() > 0.6) player2Value = operatorsList[Math.floor(Math.random() * operatorsList.length)];
+                updateAllDisplays();
             } else {
-                showMessage(`❌ Not quite! Equation = ${result}, Target = ${currentTarget}. Keep collaborating!`, 1800);
-                // Shake UI feedback
-                const eqPanel = document.querySelector('.equation-panel');
-                eqPanel.style.transform = 'translateX(-50%) translateX(5px)';
-                setTimeout(() => eqPanel.style.transform = 'translateX(-50%)', 100);
+                showMessage(`❌ Equation = ${result}, Target = ${currentTarget}. Need to adjust! Try the HINT button for help!`, 2500);
+                const eqDiv = document.getElementById('equationPreview');
+                eqDiv.style.transform = 'translateX(-50%) scale(1.02)';
+                setTimeout(() => eqDiv.style.transform = 'translateX(-50%)', 150);
             }
         }
         
         function generateNewTarget() {
-            // Generate interesting targets from 12 to 60 based on level
-            const possibleTargets = [12, 16, 18, 20, 24, 27, 30, 32, 36, 40, 42, 45, 48, 49, 54, 56, 60];
-            let idx = (currentLevel - 1) % possibleTargets.length;
-            currentTarget = possibleTargets[idx];
-            if (currentLevel > 8) {
-                currentTarget = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
-            }
+            const targets = [12, 16, 18, 20, 24, 27, 30, 32, 36, 40, 42, 45, 48, 54, 60];
+            let idx = (currentLevel - 1) % targets.length;
+            currentTarget = targets[idx];
+            if (currentLevel > 10) currentTarget = targets[Math.floor(Math.random() * targets.length)];
             document.getElementById('targetNumber').innerText = currentTarget;
-            showMessage(`🎯 New Target: ${currentTarget} | Work together!`, 2000);
+            showMessage(`🎯 New Target: ${currentTarget}. Work together! Use HINT for suggestions!`, 2500);
         }
         
-        function resetPlayersToNewChoices() {
-            // Give players new but not impossible options, retain control
-            // Player1 new number (A)
-            player1Value = numbersList[Math.floor(Math.random() * numbersList.length)];
-            // Player3 new number (B)
-            player3Value = numbersList[Math.floor(Math.random() * numbersList.length)];
-            // Player4 new number (C)
-            player4Value = numbersList[Math.floor(Math.random() * numbersList.length)];
-            // Operator can stay or change for variety but keep fun
-            // Optionally cycle operator to not be stuck
+        // 3D Effects
+        let successFlashActive = false;
+        let flashIntensity = 0;
+        let coreMat, backLight;
+        
+        function triggerSuccessEffect() {
+            if (coreMat) coreMat.emissiveIntensity = 1.2;
+            setTimeout(() => { if(coreMat) coreMat.emissiveIntensity = 0.6; }, 400);
+            const eqPanel = document.getElementById('equationPreview');
+            eqPanel.classList.add('glow-success');
+            setTimeout(() => eqPanel.classList.remove('glow-success'), 600);
+            successFlashActive = true;
+            flashIntensity = 1.0;
         }
         
-        function showMessage(msg, duration) {
-            const msgBox = document.getElementById('messageBox');
-            msgBox.innerHTML = msg;
-            msgBox.style.opacity = '1';
-            clearTimeout(window.msgTimeout);
-            window.msgTimeout = setTimeout(() => {
-                msgBox.innerHTML = "🤝 Keep communicating! Combine all pieces.";
-            }, duration);
-        }
-        
-        function updateAllPlayerDisplays() {
-            document.getElementById('p1Value').innerText = player1Value;
-            document.getElementById('p2Value').innerText = player2Value;
-            document.getElementById('p3Value').innerText = player3Value;
-            document.getElementById('p4Value').innerText = player4Value;
-            updateEquationPreview();
-        }
-        
-        // Generate UI buttons dynamically per player
         function buildPlayerControls() {
-            // Player 1 - numbers
             const p1Div = document.getElementById('p1Controls');
-            p1Div.innerHTML = '';
-            numbersList.slice(0, 8).forEach(num => {
+            numbersList.forEach(num => {
                 const btn = document.createElement('button');
-                btn.innerText = num;
-                btn.classList.add('btn-card', 'number');
-                btn.addEventListener('click', () => {
-                    player1Value = num;
-                    updateAllPlayerDisplays();
-                    showMessage(`🔴 Player 1 set A = ${num}`, 800);
-                });
+                btn.innerText = num; btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => { player1Value = num; updateAllDisplays(); showMessage(`🔴 Player 1 set A = ${num}`, 700); });
                 p1Div.appendChild(btn);
             });
-            
-            // Player 3 - numbers
             const p3Div = document.getElementById('p3Controls');
-            p3Div.innerHTML = '';
-            numbersList.slice(0, 8).forEach(num => {
+            numbersList.forEach(num => {
                 const btn = document.createElement('button');
-                btn.innerText = num;
-                btn.classList.add('btn-card', 'number');
-                btn.addEventListener('click', () => {
-                    player3Value = num;
-                    updateAllPlayerDisplays();
-                    showMessage(`🔵 Player 3 set B = ${num}`, 800);
-                });
+                btn.innerText = num; btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => { player3Value = num; updateAllDisplays(); showMessage(`🔵 Player 3 set B = ${num}`, 700); });
                 p3Div.appendChild(btn);
             });
-            
-            // Player 4 - numbers
             const p4Div = document.getElementById('p4Controls');
-            p4Div.innerHTML = '';
-            numbersList.slice(0, 8).forEach(num => {
+            numbersList.forEach(num => {
                 const btn = document.createElement('button');
-                btn.innerText = num;
-                btn.classList.add('btn-card', 'number');
-                btn.addEventListener('click', () => {
-                    player4Value = num;
-                    updateAllPlayerDisplays();
-                    showMessage(`🟡 Player 4 set C = ${num}`, 800);
-                });
+                btn.innerText = num; btn.classList.add('btn-card', 'number');
+                btn.addEventListener('click', () => { player4Value = num; updateAllDisplays(); showMessage(`🟡 Player 4 set C = ${num}`, 700); });
                 p4Div.appendChild(btn);
             });
-            
-            // Player 2 - operators
             const p2Div = document.getElementById('p2Controls');
-            p2Div.innerHTML = '';
             operatorsList.forEach(op => {
                 const btn = document.createElement('button');
-                btn.innerText = op;
-                btn.classList.add('btn-card', 'operator');
-                btn.addEventListener('click', () => {
-                    player2Value = op;
-                    updateAllPlayerDisplays();
-                    showMessage(`🟢 Operator set to ${op}`, 800);
-                });
+                btn.innerText = op; btn.classList.add('btn-card', 'operator');
+                btn.addEventListener('click', () => { player2Value = op; updateAllDisplays(); showMessage(`🟢 Operator set to ${op}`, 700); });
                 p2Div.appendChild(btn);
             });
             
-            // Add reset individual option? Not needed but extra fun: reset all
-            const resetAllBtn = document.createElement('button');
-            resetAllBtn.innerText = '🔄 RESET ALL';
-            resetAllBtn.classList.add('btn-card', 'reset-btn');
-            resetAllBtn.style.marginTop = '8px';
-            resetAllBtn.addEventListener('click', () => {
-                player1Value = 4;
-                player2Value = '+';
-                player3Value = 6;
-                player4Value = 2;
-                updateAllPlayerDisplays();
-                showMessage("🔄 Team reset! Build a new equation together.", 1200);
+            const resetBtn = document.createElement('button');
+            resetBtn.innerText = '🔄 RESET ALL'; resetBtn.classList.add('btn-card', 'reset-btn');
+            resetBtn.addEventListener('click', () => {
+                player1Value = 8; player2Value = '+'; player3Value = 4; player4Value = 2;
+                updateAllDisplays();
+                showMessage("Team reset! Build new equation together.", 1200);
             });
-            p1Div.appendChild(resetAllBtn.cloneNode(true));
-            p3Div.appendChild(resetAllBtn.cloneNode(true));
-            p4Div.appendChild(resetAllBtn.cloneNode(true));
+            p1Div.appendChild(resetBtn.cloneNode(true));
+            p3Div.appendChild(resetBtn.cloneNode(true));
+            p4Div.appendChild(resetBtn.cloneNode(true));
         }
         
-        // 3D Scene Setup
+        function initHeightPresets() {
+            for (let i = 1; i <= 4; i++) {
+                const btns = document.querySelectorAll(`.preset-btn[data-player="${i}"]`);
+                btns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const preset = btn.dataset.preset;
+                        setPlayerHeight(i, preset);
+                        showMessage(`Player ${i} panel moved to ${preset.toUpperCase()} position`, 1000);
+                    });
+                });
+                if (i === 1 || i === 2) setPlayerHeight(i, 'bottom');
+                else setPlayerHeight(i, 'middle');
+            }
+            
+            document.querySelectorAll('.shared-preset').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const preset = btn.dataset.shared;
+                    setSharedControlsHeight(preset);
+                    showMessage(`Submit & Hint buttons moved to ${preset.toUpperCase()}`, 1000);
+                });
+            });
+            setSharedControlsHeight('middle');
+        }
+        
+        // Three.js Scene
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050b1a);
         scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
-        
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(8, 6, 12);
-        camera.lookAt(0, 0, 0);
-        
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
+        const orbitControls = new OrbitControls(camera, renderer.domElement);
+        orbitControls.enableDamping = true;
+        orbitControls.target.set(0, 1, 0);
         
-        // Controls with auto-rotate optional but not interfering
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.autoRotate = false;
-        controls.enableZoom = true;
-        controls.enablePan = true;
-        controls.target.set(0, 1, 0);
-        
-        // Lighting
         const ambientLight = new THREE.AmbientLight(0x404060);
         scene.add(ambientLight);
         const mainLight = new THREE.DirectionalLight(0xffffff, 1);
         mainLight.position.set(5, 10, 7);
-        mainLight.castShadow = true;
-        mainLight.receiveShadow = false;
         scene.add(mainLight);
         const fillLight = new THREE.PointLight(0x4466cc, 0.3);
         fillLight.position.set(-3, 4, 4);
         scene.add(fillLight);
-        const backLight = new THREE.PointLight(0xffaa66, 0.4);
+        backLight = new THREE.PointLight(0xffaa66, 0.4);
         backLight.position.set(0, 3, -5);
         scene.add(backLight);
         
-        // Central glowing platform
-        const platformMat = new THREE.MeshStandardMaterial({ color: 0x2c3e66, roughness: 0.3, metalness: 0.7, emissive: 0x111133 });
-        const centralBase = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 0.3, 32), platformMat);
+        const centralBase = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x2c3e66, roughness: 0.3, metalness: 0.7 }));
         centralBase.position.y = -0.5;
-        centralBase.receiveShadow = true;
         scene.add(centralBase);
-        
-        // Floating central core (target visual)
-        const coreMat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0x442200, emissiveIntensity: 0.6 });
-        const coreSphere = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), coreMat);
+        const coreMatObj = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0x442200, emissiveIntensity: 0.6 });
+        coreMat = coreMatObj;
+        const coreSphere = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), coreMatObj);
         coreSphere.position.y = 0.3;
-        coreSphere.castShadow = true;
         scene.add(coreSphere);
         
-        // Rotating rings
         const ringGeo = new THREE.TorusGeometry(1.4, 0.08, 64, 200);
-        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x552200 });
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffaa66 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.2;
         scene.add(ring);
-        
         const ring2 = new THREE.Mesh(ringGeo, ringMat);
         ring2.rotation.z = Math.PI / 3;
         ring2.rotation.x = Math.PI / 3;
         ring2.position.y = 0.5;
         scene.add(ring2);
         
-        // Player colored floating orbs around central
         const colors = [0xff4d4d, 0x4caf50, 0x2196f3, 0xffeb3b];
         const positions = [[-2.2, 0, -2.2], [2.2, 0, -2.2], [-2.2, 0, 2.2], [2.2, 0, 2.2]];
-        const orbs = [];
         positions.forEach((pos, idx) => {
-            const orbMat = new THREE.MeshStandardMaterial({ color: colors[idx], emissive: 0x331100, emissiveIntensity: 0.4 });
-            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), orbMat);
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), new THREE.MeshStandardMaterial({ color: colors[idx], emissive: 0x331100 }));
             orb.position.set(pos[0], pos[1] + 0.2, pos[2]);
-            orb.castShadow = true;
             scene.add(orb);
-            orbs.push(orb);
         });
         
-        // Floating particles
-        const particleCount = 400;
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(particleCount * 3);
-        for (let i = 0; i < particleCount; i++) {
+        const particlesGeo = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(400 * 3);
+        for (let i = 0; i < 400; i++) {
             particlePositions[i*3] = (Math.random() - 0.5) * 30;
             particlePositions[i*3+1] = (Math.random() - 0.5) * 8 + 1;
             particlePositions[i*3+2] = (Math.random() - 0.5) * 20 - 5;
         }
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        const particleMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.08, transparent: true, opacity: 0.5 });
-        const particles = new THREE.Points(particlesGeometry, particleMat);
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particles = new THREE.Points(particlesGeo, new THREE.PointsMaterial({ color: 0x88aaff, size: 0.08, transparent: true }));
         scene.add(particles);
         
-        // Animation & success effect
-        let time = 0;
-        let successFlash = false;
-        let flashIntensity = 0;
-        
-        window.successEffect = () => {
-            successFlash = true;
-            flashIntensity = 1.0;
-            coreMat.emissiveIntensity = 1.2;
-            setTimeout(() => { coreMat.emissiveIntensity = 0.6; }, 400);
-            // animate orbs
-            orbs.forEach(orb => {
-                orb.scale.set(1.4, 1.4, 1.4);
-                setTimeout(() => orb.scale.set(1, 1, 1), 300);
-            });
-            const eqDiv = document.querySelector('.equation-panel');
-            eqDiv.classList.add('glow-success');
-            setTimeout(() => eqDiv.classList.remove('glow-success'), 600);
-        };
-        
-        function animatePlatforms() {
-            // just visual bounce
-            coreSphere.position.y = 0.3 + Math.sin(Date.now() * 0.01) * 0.05;
-        }
-        
-        // Animate loop
         function animate() {
             requestAnimationFrame(animate);
-            time += 0.012;
             ring.rotation.z += 0.008;
             ring2.rotation.x += 0.005;
             ring2.rotation.y += 0.003;
-            coreSphere.position.y = 0.35 + Math.sin(time * 2) * 0.05;
+            coreSphere.position.y = 0.35 + Math.sin(Date.now() * 0.004) * 0.05;
             particles.rotation.y += 0.002;
-            particles.rotation.x += 0.001;
-            
-            if (successFlash) {
-                const intensity = flashIntensity * 0.95;
-                flashIntensity *= 0.92;
-                if (flashIntensity < 0.05) successFlash = false;
-                const lightColor = 0xffaa66;
-                backLight.intensity = 0.8 + flashIntensity * 1.2;
-            } else {
-                backLight.intensity = 0.4;
-            }
-            
-            controls.update(); // update orbit if user interacts
+            if (successFlashActive) {
+                flashIntensity *= 0.9;
+                if (flashIntensity < 0.05) successFlashActive = false;
+                if (backLight) backLight.intensity = 0.8 + flashIntensity * 1.2;
+            } else if (backLight) backLight.intensity = 0.4;
+            orbitControls.update();
             renderer.render(scene, camera);
         }
-        
         animate();
         
-        // UI Event binding
-        document.getElementById('submitEquation').addEventListener('click', submitEquation);
+        // Event Listeners
+        document.getElementById('submitEquationBtn').addEventListener('click', submitEquation);
+        document.getElementById('hintButton').addEventListener('click', showSmartHint);
         
-        // Initialize game
         function initGame() {
             buildPlayerControls();
-            player1Value = 8;
-            player3Value = 3;
-            player4Value = 1;
-            player2Value = '+';
-            currentTarget = 24;
-            currentScore = 0;
-            currentLevel = 1;
-            document.getElementById('targetNumber').innerText = currentTarget;
-            document.getElementById('scoreValue').innerText = currentScore;
-            document.getElementById('levelValue').innerText = currentLevel;
-            updateAllPlayerDisplays();
-            showMessage("🌟 Team up! Each player controls a number/operator. Build equation = Target!", 3000);
+            initHeightPresets();
+            updateAllDisplays();
+            showMessage("🌟 Welcome! Each student: choose TOP/MID/BOTTOM for YOUR panel. Click HINT for smart team suggestions!", 5000);
         }
-        
         initGame();
         
-        // Responsive resize
-        window.addEventListener('resize', onWindowResize, false);
-        function onWindowResize() {
+        window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
-        // Add small interaction hint on player zones
-        console.log("3D Collaborative Equation Builders ready! Touch/click friendly.");
+        });
     </script>
 </body>
 </html>
